@@ -15,13 +15,16 @@
 **WHO:** As an unauthenticated user,
  **WHAT:** I want to be presented with options to sign in or register when I open the application,
  **WHY:** so that I can access an existing account or create a new one.
+
 **Acceptance Criteria:**
 **GIVEN** I open the application and I am not signed in,
  **WHEN** the starter screen loads,
  **THEN** I am presented with options to Sign In or Register.
+ 
 **GIVEN** I am not signed in,
  **WHEN** I attempt to access the application's other features,
  **THEN** I am prevented from accessing them until I successfully sign in.
+ 
 **GIVEN** I previously signed in and have not logged out,
  **WHEN** I reopen the application,
  **THEN** I remain signed in and am taken directly to the dashboard/homepage.
@@ -33,25 +36,32 @@
 **WHO:** As a new user,
  **WHAT:** I want to register an account using my personal and login information,
  **WHY:** so that I can create an account and access the application.
+ 
 **Acceptance Criteria:**
 **GIVEN** I am registering an account,
  **WHEN** I provide a valid first name, last name, email, username, and password and the username and email are unused,
  **THEN** my account is successfully created.
+ 
 **GIVEN** one or more required fields are missing,
  **WHEN** I attempt to register,
  **THEN** the application informs me that all fields are required and does not create the account.
+ 
 **GIVEN** I enter a first or last name,
  **WHEN** it contains fewer than 3 or more than 20 letters, or contains numbers or special symbols,
  **THEN** registration does not proceed and I am informed of the applicable name requirement.
+ 
 **GIVEN** I enter an invalid email format,
  **WHEN** I attempt to register,
  **THEN** registration does not proceed and I am informed that the email must have a valid format.
+ 
 **GIVEN** I enter a username,
  **WHEN** it does not contain between 8 and 16 characters,
  **THEN** registration does not proceed and I am informed of the username length requirement.
+ 
 **GIVEN** I enter a password,
  **WHEN** it has fewer than 8 characters or does not contain at least one letter, one number, and one special character,
  **THEN** registration does not proceed and I am informed of the password requirements.
+ 
 **GIVEN** the username or email is already in use,
  **WHEN** I attempt to register,
  **THEN** the account is not created and I am informed that the username or email is already in use.
@@ -63,10 +73,12 @@
 **WHO:** As a registered user,
  **WHAT:** I want to sign in using my username and password,
  **WHY:** so that I can access the application and my personal information.
+ 
 **Acceptance Criteria:**
 **GIVEN** I have a registered account,
  **WHEN** I enter my correct username and password,
  **THEN** I am successfully signed in and taken to the dashboard/homepage.
+ 
 **GIVEN** I enter an incorrect username or password,
  **WHEN** I attempt to sign in,
  **THEN** the application displays "Incorrect username or password" and allows me to try again.
@@ -78,10 +90,12 @@
 **WHO:** As a signed-in user,
  **WHAT:** I want to sign out of my account,
  **WHY:** so that I can end my authenticated session.
+ 
 **Acceptance Criteria:**
 **GIVEN** I am signed in,
  **WHEN** I choose to log out,
  **THEN** I am signed out and returned to the sign-in screen.
+ 
 **GIVEN** I have logged out,
  **WHEN** I attempt to access an authenticated feature,
  **THEN** I cannot access it without signing in again.
@@ -93,33 +107,43 @@
 **WHO:** As a signed-in user,
  **WHAT:** I want to configure authentication methods and a trust level,
  **WHY:** so that I can control how much verification is required for sensitive account actions.
+ 
 **Acceptance Criteria:**
 **GIVEN** I access my authentication settings,
  **WHEN** I configure authentication methods,
  **THEN** I can use email verification, Google Authenticator, and passkeys.
+ 
 **GIVEN** I configure Google Authenticator,
  **WHEN** I use the provided QR code/setup key and successfully verify a generated code,
  **THEN** Google Authenticator becomes an active authentication factor.
+ 
 **GIVEN** I configure passkeys,
  **WHEN** I add them to my account,
  **THEN** I can register multiple passkeys, with passkeys collectively counting as one authentication factor.
+ 
 **GIVEN** my account uses the default trust level,
  **THEN** it is **Lenient**, requiring 1 authentication factor.
+ 
 **GIVEN** I have at least 2 factors configured,
  **WHEN** I select **Moderate**,
  **THEN** 2 authentication factors are required.
+ 
 **GIVEN** all 3 factors are configured,
  **WHEN** I select **Strict**,
  **THEN** 3 authentication factors are required.
+ 
 **GIVEN** I do not have enough configured factors for a trust level,
  **WHEN** I view that trust level,
  **THEN** it is grayed out and cannot be selected.
+ 
 **GIVEN** Moderate requires 2 factors and I have all 3 available,
  **WHEN** verification is required,
  **THEN** I can choose which 2 factors to use.
+ 
 **GIVEN** I attempt to change my trust level or add/remove an authentication method,
  **WHEN** I initiate the change,
  **THEN** I must first satisfy my current trust level.
+ 
 **GIVEN** removing a factor would violate my current trust level,
  **WHEN** I attempt to remove it,
  **THEN** the application prevents the removal until I lower my trust level.
@@ -131,13 +155,16 @@
 **WHO:** As a signed-in user,
  **WHAT:** I want to securely change sensitive account information,
  **WHY:** so that I can maintain my account while protecting sensitive changes with identity verification.
+ 
 **Acceptance Criteria:**
 **GIVEN** I attempt to change my username, email, or password,
  **WHEN** I initiate the change,
  **THEN** I must first verify my identity according to my current trust level.
+ 
 **GIVEN** I successfully verify my identity and change my username,
  **WHEN** the new username contains 8–16 characters and is unused,
  **THEN** my username is changed.
+ 
 **GIVEN** I successfully verify my identity and request an email change,
  **WHEN** the new email has a valid format and is unused,
  **THEN** verification is sent to the new email.
