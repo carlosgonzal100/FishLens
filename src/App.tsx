@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { isSignedIn } from "./auth/session";
 import SplashScreen from "./screens/SplashScreen";
 import StarterScreen from "./screens/StarterScreen";
+import RegisterScreen from "./screens/RegisterScreen";
 import DashboardScreen from "./screens/DashboardScreen";
 import PlaceholderScreen from "./screens/PlaceholderScreen";
 
@@ -49,13 +50,7 @@ export default function App() {
       );
 
     case "register":
-      return (
-        <PlaceholderScreen
-          title="Register"
-          message="Coming in User Story 1.2."
-          onBack={() => setScreen("starter")}
-        />
-      );
+      return <RegisterScreen onBack={() => setScreen("starter")} />;
 
     case "dashboard":
       return <DashboardScreen />;
