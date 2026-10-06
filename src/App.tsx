@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isSignedIn } from "./auth/session";
+import { endSession, isSignedIn } from "./auth/session";
 import SplashScreen from "./screens/SplashScreen";
 import StarterScreen from "./screens/StarterScreen";
 import SignInScreen from "./screens/SignInScreen";
@@ -24,7 +24,7 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [screen]);
 
-  // US 1.1: signed-out users can't reach protected screens.
+  // US 1.1 / 1.4: signed-out users can't reach protected screens.
   const current: Screen =
     PROTECTED_SCREENS.includes(screen) && !isSignedIn() ? "starter" : screen;
 
@@ -52,6 +52,14 @@ export default function App() {
       return <RegisterScreen onBack={() => setScreen("starter")} />;
 
     case "dashboard":
-      return <DashboardScreen />;
+      return (
+        <DashboardScreen
+          onSignOut={() => {
+            // US 1.4: sign out and return to the sign-in screen
+            endSession();
+            setScreen("sign-in");
+          }}
+        />
+      );
   }
 }
