@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { isSignedIn } from "./auth/session";
 import SplashScreen from "./screens/SplashScreen";
 import StarterScreen from "./screens/StarterScreen";
+import SignInScreen from "./screens/SignInScreen";
 import RegisterScreen from "./screens/RegisterScreen";
 import DashboardScreen from "./screens/DashboardScreen";
-import PlaceholderScreen from "./screens/PlaceholderScreen";
 
 type Screen = "splash" | "starter" | "sign-in" | "register" | "dashboard";
 
@@ -42,10 +42,9 @@ export default function App() {
 
     case "sign-in":
       return (
-        <PlaceholderScreen
-          title="Sign In"
-          message="Coming in User Story 1.3."
+        <SignInScreen
           onBack={() => setScreen("starter")}
+          onSuccess={() => setScreen("dashboard")}
         />
       );
 
