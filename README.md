@@ -45,3 +45,14 @@ Then open http://localhost:8443 in your browser.
 Accounts are currently stored in the browser's localStorage, so they only exist on
 one device and browser. A backend with a shared database will be needed for features
 that involve multiple users (following, groups, competitions).
+
+
+
+## Attribution & Sources:
+database from fishbase.org under Attribution-NonCommercial 4.0 https://creativecommons.org/licenses/by-nc/4.0/:
+
+https://fishbase.org/country/CountryChecklist.php?what=list&trpp=50&c_code=840&csub_code=US-NY&cpresence=present&vhabitat=all2&ext_CL=on&ext_pic=on
+
+New York State Fishing Regulations:
+
+https://dec.ny.gov/things-to-do/freshwater-fishing/regulations
