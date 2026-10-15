@@ -56,3 +56,9 @@ https://fishbase.org/country/CountryChecklist.php?what=list&trpp=50&c_code=840&c
 New York State Fishing Regulations:
 
 https://dec.ny.gov/things-to-do/freshwater-fishing/regulations
+
+## Context Diagram
+
+This is the system of our current workflow for our product FishLens: 
+
+https://app.diagrams.net/#G1QbGMAqkn2zj-Kk2GKa9mPZfIvE18F7Yb#%7B%22pageId%22%3A%22cr7kqduUnIDSK3jMJ_eB%22%7D
