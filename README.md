@@ -19,6 +19,42 @@ user stories and acceptance criteria. Work is tracked in the repo's Issues tab.
 - Vite (development server and build tool)
 - Deployed on Vercel
 
+## Architecture
+
+FishLens uses a **client/server architecture**.
+
+- **Client:** a React + TypeScript single-page app that runs on the user's phone or browser.
+  It displays the screens and uses device features (camera, location).
+- **Server:** a backend API that stores shared data, enforces security and privacy rules,
+  and connects to outside services.
+
+**Why client/server:** Many features in `spec.md` need data shared between users or kept
+secure, such as accounts on any device (Epic 1), following other users (Epic 3), group
+competitions (Epic 4), a shared NY fish database (Epic 5), and AI services that require
+secret API keys (Epic 6).
+
+```mermaid
+flowchart LR
+    C["Client<br/>React app"] <--> S["Server API"]
+    S <--> DB[("Database")]
+    S --> AI["AI service<br/>(Epic 6)"]
+    S --> E["Email service<br/>(Epic 1)"]
+    NY["NY fish & regulation data"] -.-> DB
+```
+
+| Server part | Handles | Epic |
+|---|---|---|
+| Accounts & Security | Sign in, registration, verification, trust levels | 1 |
+| Profiles & Catches | Profiles, pictures, catch history | 2 |
+| Social | Following, private accounts, timeline | 3 |
+| Groups & Competitions | Group membership, competitions | 4 |
+| Fish Info & Regulations | Species, regulations, licenses, protected species | 5 |
+| AI Gateway | Fish identification and AI assistant | 6 |
+
+**Current status:** Epic 1 (User Stories 1.1–1.4) is implemented client-only, with accounts
+stored in the browser's `localStorage`. The server will replace this storage as later epics
+are built. Specific server and database technologies are still TBD.
+
 ## Getting started
 
 You'll need [Git](https://git-scm.com) and [Node.js](https://nodejs.org) (LTS version).
