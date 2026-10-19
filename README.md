@@ -55,6 +55,10 @@ flowchart LR
 stored in the browser's `localStorage`. The server will replace this storage as later epics
 are built. Specific server and database technologies are still TBD.
 
+## Prototype Link
+
+https://www.figma.com/design/PitPisebdbCrUacfxKt3te/FishLens-Prototype?node-id=1-4&t=PN9TCOM5oLJhwmpo-1
+
 ## Getting started
 
 You'll need [Git](https://git-scm.com) and [Node.js](https://nodejs.org) (LTS version).
