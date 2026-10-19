@@ -58,6 +58,8 @@ are built. Specific server and database technologies are still TBD.
 
 ## Prototype Link
 
+Here is a link to our Figma prototype link showcasing our UI/UX screens and workflows:
+
 https://www.figma.com/design/PitPisebdbCrUacfxKt3te/FishLens-Prototype?node-id=1-4&t=PN9TCOM5oLJhwmpo-1
 
 
