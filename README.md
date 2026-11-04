@@ -70,8 +70,9 @@ You'll need [Git](https://git-scm.com) and [Node.js](https://nodejs.org) (LTS ve
 ```bash
 git clone https://github.com/carlosgonzal100/FishLens.git
 cd FishLens
-npm install
-npm run dev
+npm install -g pnpm@10.34.3
+pnpm install
+pnpm dev
 ```
 
 Then open http://localhost:8443 in your browser.
@@ -98,7 +99,7 @@ based on the acceptance criteria in `spec.md`, so each test can be traced back t
 | **React Testing Library** + **user-event** | Displays a screen and simulates a user typing and clicking (integration tests) |
 | **jsdom** | A simulated browser that gives tests access to `localStorage` and a page to draw screens on |
 
-Tests are run with `npm test`. Browser storage is cleared before each test so that tests do not
+Tests are run with `pnpm test`. Browser storage is cleared before each test so that tests do not
 affect each other.
 
 ---
