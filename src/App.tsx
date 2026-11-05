@@ -5,11 +5,12 @@ import StarterScreen from "./screens/StarterScreen";
 import SignInScreen from "./screens/SignInScreen";
 import RegisterScreen from "./screens/RegisterScreen";
 import DashboardScreen from "./screens/DashboardScreen";
+import ProfileScreen from "./screens/ProfileScreen";
 
-type Screen = "splash" | "starter" | "sign-in" | "register" | "dashboard";
+type Screen = "splash" | "starter" | "sign-in" | "register" | "dashboard" | "profile";
 
 // Screens that only signed-in users may see.
-const PROTECTED_SCREENS: Screen[] = ["dashboard"];
+const PROTECTED_SCREENS: Screen[] = ["dashboard", "profile"];
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("splash");
@@ -54,6 +55,7 @@ export default function App() {
     case "dashboard":
       return (
         <DashboardScreen
+          onViewProfile={() => setScreen("profile")}
           onSignOut={() => {
             // US 1.4: sign out and return to the sign-in screen
             endSession();
@@ -61,5 +63,9 @@ export default function App() {
           }}
         />
       );
+
+    case "profile":
+      // US 2.1: view profile
+      return <ProfileScreen onBack={() => setScreen("dashboard")} />;
   }
 }
