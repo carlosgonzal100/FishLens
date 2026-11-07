@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { loadSignedInAccount } from "./auth/accounts";
 import { endSession, isSignedIn } from "./auth/session";
 import SplashScreen from "./screens/SplashScreen";
 import StarterScreen from "./screens/StarterScreen";
@@ -55,7 +56,10 @@ export default function App() {
     case "dashboard":
       return (
         <DashboardScreen
-          onViewProfile={() => setScreen("profile")}
+          onViewProfile={async () => {
+            await loadSignedInAccount();
+            setScreen("profile");
+          }}
           onSignOut={() => {
             // US 1.4: sign out and return to the sign-in screen
             endSession();

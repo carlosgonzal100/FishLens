@@ -2,11 +2,12 @@
 // closing and reopening the app (User Story 1.1) and their profile can be
 // shown (User Story 2.1).
 //
-// NOTE: This is saved in the browser's localStorage, so it only works on this
-// device and browser. Real accounts will need a backend later.
+// NOTE: This is the one thing the browser keeps. Accounts are in the database,
+// and the token proves to the backend who is signed in.
 
 const SESSION_KEY = "fish-field-guide-authenticated";
 const USER_KEY = "fish-field-guide-current-user";
+const TOKEN_KEY = "fish-field-guide-token";
 
 export function isSignedIn(): boolean {
   try {
@@ -42,10 +43,27 @@ export function getSignedInUsername(): string | null {
   }
 }
 
+export function saveSessionToken(token: string): void {
+  try {
+    window.localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    // Storage unavailable; the profile can't be loaded after this.
+  }
+}
+
+export function getSessionToken(): string | null {
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function endSession(): void {
   try {
     window.localStorage.removeItem(SESSION_KEY);
     window.localStorage.removeItem(USER_KEY);
+    window.localStorage.removeItem(TOKEN_KEY);
   } catch {
     // Nothing to clear.
   }
