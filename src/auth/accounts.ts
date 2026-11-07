@@ -20,15 +20,6 @@ type FormErrors = Record<string, string>;
 // The signed-in account, kept in memory after it's loaded from the database.
 let accounts: Account[] = [];
 
-// Turns a password into a scrambled "hash" so the real password is never saved.
-export async function hashPassword(password: string): Promise<string> {
-  const encodedPassword = new TextEncoder().encode(password);
-  const hash = await window.crypto.subtle.digest("SHA-256", encodedPassword);
-  return Array.from(new Uint8Array(hash))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
 export function loadAccounts(): Account[] {
   return accounts;
 }
