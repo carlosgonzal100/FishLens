@@ -33,10 +33,15 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("splash");
 
   // When the app opens: show the splash, then go to the dashboard if already
-  // signed in (US 1.1), otherwise to the starter screen.
+  // signed in (US 1.1), otherwise to the starter screen. A saved token the
+  // backend rejects signs the user out. If the backend can't be reached, they
+  // stay signed in.
   useEffect(() => {
     if (screen !== "splash") return;
-    const timer = window.setTimeout(() => {
+    const timer = window.setTimeout(async () => {
+      if (isSignedIn() && (await loadSignedInAccount()) === "rejected") {
+        endSession();
+      }
       setScreen(isSignedIn() ? "dashboard" : "starter");
     }, 1800);
     return () => window.clearTimeout(timer);

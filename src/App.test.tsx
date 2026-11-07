@@ -14,7 +14,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
-import { endSession, isSignedIn, startSession } from "./auth/session";
+import { endSession, isSignedIn, saveSessionToken, startSession } from "./auth/session";
 
 // Typing into many fields takes longer than the default 5 second limit.
 vi.setConfig({ testTimeout: 30000 });
@@ -65,8 +65,15 @@ let serverAccounts: RegistrationValues[] = [];
 
 // Stands in for the Django backend, so these tests run without a server or a database.
 async function fakeBackend(url: string, options: RequestInit) {
-  const values = JSON.parse(String(options.body));
   const reply = (status: number, body: unknown) => ({ status, json: async () => body });
+
+  if (url.endsWith("/me/")) {
+    const header = (options.headers as Record<string, string>).Authorization;
+    const account = serverAccounts.find((saved) => header === `Bearer fake-token-${saved.username}`);
+    return account ? reply(200, { account }) : reply(401, { errors: { form: "Please sign in again." } });
+  }
+
+  const values = JSON.parse(String(options.body));
 
   if (url.endsWith("/register/")) {
     const account = {
@@ -88,7 +95,7 @@ async function fakeBackend(url: string, options: RequestInit) {
     (saved) => saved.username === values.username && saved.password === values.password,
   );
   return matches
-    ? reply(200, { token: "fake-token" })
+    ? reply(200, { token: `fake-token-${values.username}` })
     : reply(401, { errors: { form: "Incorrect username or password" } });
 }
 
@@ -216,11 +223,12 @@ describe("INTEGRATION TESTS: User Story 1.1 - Access the Starter Screen", () => 
   //other features of the app until i sign in. It tests the app like a user by going to the
   //sign in page and putting in a valid username, but a invalid password and expects the
   //dashboard to no be showing. Then it tests the app again by putting in a valid username and password
-  //and expects the dashboard to be showing.
+  //and expects the dashboard to be showing. Last, it reopens the app with a saved token the
+  //backend rejects and expects the user to be signed out.
   //Supports User Story 1.1 AC2
   it("AC2: a signed-out user cannot reach the app's features until signing in", async () => {
     await registerAccount();
-    openApp();
+    const app = openApp();
 
     expect(dashboardIsShowing()).toBe(false);
     expect(screen.queryByRole("button", { name: UI.profile })).not.toBeInTheDocument();
@@ -234,6 +242,14 @@ describe("INTEGRATION TESTS: User Story 1.1 - Access the Starter Screen", () => 
     // A successful sign-in does.
     await submitSignIn(VALID_ACCOUNT.username, VALID_ACCOUNT.password);
     await waitForDashboard();
+
+    // A saved token the backend rejects doesn't count as signed in.
+    app.unmount();
+    saveSessionToken("not-a-real-token");
+    openApp();
+    await screen.findByRole("button", { name: UI.signIn });
+    expect(isSignedIn()).toBe(false);
+    expect(dashboardIsShowing()).toBe(false);
   });
 
   //KEPT: when the user is signed in, closes the app, and reopens the app, they are still signed in
@@ -246,7 +262,7 @@ describe("INTEGRATION TESTS: User Story 1.1 - Access the Starter Screen", () => 
 
     openApp();
 
-    expect(dashboardIsShowing()).toBe(true);
+    await waitForDashboard(); // after the backend accepts the saved token
     expect(screen.queryByRole("button", { name: UI.register })).not.toBeInTheDocument();
   });
 });

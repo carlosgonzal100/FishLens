@@ -4,7 +4,9 @@
 
 import { getSessionToken } from "./session";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+// Uses the live backend unless VITE_API_URL says otherwise, for example
+// VITE_API_URL=http://localhost:8000 to test against Django on your own computer.
+const API_URL = import.meta.env.VITE_API_URL ?? "https://fish-lens-backend.vercel.app";
 const SERVER_ERROR = "We can't reach the server. Please try again.";
 
 export type Account = {
@@ -66,13 +68,17 @@ export async function signInToAccount(
 }
 
 // Loads the signed-in account from the database, so the profile can show it.
-export async function loadSignedInAccount(): Promise<void> {
+// Returns "rejected" only when the backend says the saved token isn't valid.
+export async function loadSignedInAccount(): Promise<"loaded" | "rejected" | "unreachable"> {
   try {
     const { status, body } = await send("me/", {
       headers: { Authorization: `Bearer ${getSessionToken()}` },
     });
     accounts = status === 200 ? [body.account] : [];
+    if (status === 200) return "loaded";
+    return status === 401 ? "rejected" : "unreachable";
   } catch {
     accounts = [];
+    return "unreachable";
   }
 }
