@@ -97,6 +97,7 @@ based on the acceptance criteria in `spec.md`, so each test can be traced back t
 |---|---|
 | **Vitest** | Runs all unit and integration tests (the test runner for Vite projects) |
 | **React Testing Library** + **user-event** | Displays a screen and simulates a user typing and clicking (integration tests) |
+| **jest-dom** | Adds checks for what is on the page, such as whether an element is showing (integration tests) |
 | **jsdom** | A simulated browser that gives tests access to `localStorage` and a page to draw screens on |
 
 Tests are run with `pnpm test`. Browser storage is cleared before each test so that tests do not
