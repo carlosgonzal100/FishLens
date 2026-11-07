@@ -80,9 +80,9 @@ function openApp() {
   return app;
 }
 
-// Finds the dashboard by its page section, so its text and design can change freely.
+// Finds the dashboard by its profile menu, which the profile screen doesn't have.
 function dashboardIsShowing() {
-  return document.querySelector(".dashboard-screen") !== null;
+  return document.querySelector(".profile-menu") !== null;
 }
 
 async function waitForDashboard() {

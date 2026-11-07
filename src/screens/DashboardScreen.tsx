@@ -3,7 +3,13 @@ import Brand from "../components/Brand";
 import FishIllustration from "../components/FishIllustration";
 
 // The dashboard/homepage. Only signed-in users can see it.
-export default function DashboardScreen({ onSignOut }: { onSignOut: () => void }) {
+export default function DashboardScreen({
+  onSignOut,
+  onViewProfile,
+}: {
+  onSignOut: () => void;
+  onViewProfile: () => void;
+}) {
   const [now, setNow] = useState(() => new Date());
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
@@ -16,7 +22,7 @@ export default function DashboardScreen({ onSignOut }: { onSignOut: () => void }
   return (
     <main className="dashboard-screen">
       <section className="dashboard-card">
-        {/* User Story 1.4: profile menu with Sign Out */}
+        {/* User Stories 1.4 and 2.1: profile menu with View Profile and Sign Out */}
         <div className="profile-menu">
           <button
             className="profile-button"
@@ -33,6 +39,9 @@ export default function DashboardScreen({ onSignOut }: { onSignOut: () => void }
           </button>
           {profileMenuOpen && (
             <div className="profile-dropdown" role="menu">
+              <button type="button" role="menuitem" onClick={onViewProfile}>
+                View Profile
+              </button>
               <button type="button" role="menuitem" onClick={onSignOut}>
                 Sign Out
               </button>

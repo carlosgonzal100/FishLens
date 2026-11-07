@@ -31,8 +31,9 @@ export default function SignInScreen({
       return;
     }
 
-    // AC: correct username and password signs in and opens the dashboard
-    startSession();
+    // AC: correct username and password signs in and opens the dashboard.
+    // The username is saved too, so the profile knows who is signed in (US 2.1).
+    startSession(username);
     setError("");
     onSuccess();
   };

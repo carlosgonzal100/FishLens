@@ -1,0 +1,135 @@
+/* User Story 2.1 — Profile screen (colors match the Figma prototype) */
+
+.profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  text-align: left;
+}
+
+.profile-back {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #1c7c8c;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.profile-avatar {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #dceff2;
+  color: #1c7c8c;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.profile-username {
+  margin: 4px 0 0;
+  color: #5b6770;
+}
+
+.profile-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #e6edf0;
+}
+
+.profile-tabs button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #5b6770;
+  font: inherit;
+  cursor: pointer;
+}
+
+.profile-tabs button[aria-selected="true"] {
+  background: #ffffff;
+  color: #17212a;
+  font-weight: 600;
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px;
+  border: 1px solid #d5dee3;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.profile-stat strong {
+  color: #17212a;
+  font-size: 1.5rem;
+}
+
+.profile-stat span,
+.profile-empty,
+.catch-item span {
+  color: #5b6770;
+  font-size: 0.875rem;
+}
+
+.profile-empty {
+  margin: 0;
+  padding: 24px;
+  border: 1px dashed #d5dee3;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.catch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.catch-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #d5dee3;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.catch-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
