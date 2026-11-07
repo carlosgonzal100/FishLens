@@ -51,9 +51,9 @@ flowchart LR
 | Fish Info & Regulations | Species, regulations, licenses, protected species | 5 |
 | AI Gateway | Fish identification and AI assistant | 6 |
 
-**Current status:** Epic 1 (User Stories 1.1–1.4) is implemented client-only, with accounts
-stored in the browser's `localStorage`. The server will replace this storage as later epics
-are built. Specific server and database technologies are still TBD.
+**Current status:** Accounts are stored in MongoDB Atlas through a Django backend hosted on
+Vercel. The browser's `localStorage` only keeps the signed-in session and the user's catches.
+The server will replace the catch storage as later epics are built.
 
 
 ## Prototype Link
@@ -97,6 +97,7 @@ based on the acceptance criteria in `spec.md`, so each test can be traced back t
 |---|---|
 | **Vitest** | Runs all unit and integration tests (the test runner for Vite projects) |
 | **React Testing Library** + **user-event** | Displays a screen and simulates a user typing and clicking (integration tests) |
+| **jest-dom** | Adds checks for what is on the page, such as whether an element is showing (integration tests) |
 | **jsdom** | A simulated browser that gives tests access to `localStorage` and a page to draw screens on |
 
 Tests are run with `pnpm test`. Browser storage is cleared before each test so that tests do not
@@ -113,7 +114,6 @@ displaying any screens.
 
 **What will be unit tested**
 - Session functions in `src/auth/session.ts`: `isSignedIn`, `startSession`, `endSession`
-- Account functions in `src/auth/accounts.ts`: `hashPassword`, `loadAccounts`, `addAccount`
 - Registration rules (User Story 1.2), once they are moved out of `RegisterScreen.tsx` into
   their own validation function
 
@@ -124,8 +124,6 @@ displaying any screens.
 | 1.1 | `isSignedIn()` for a new visitor | `false` |
 | 1.1 | `startSession()`, then `isSignedIn()` | `true` |
 | 1.4 | `startSession()`, `endSession()`, then `isSignedIn()` | `false` |
-| 1.2 | `hashPassword("Fish!2024")` | A hash that is not equal to `"Fish!2024"`; the same password always gives the same hash |
-| 1.2 | `loadAccounts()` when saved data is corrupted | An empty list instead of a crash |
 
 **Boundary value tests for registration (User Story 1.2)**
 
@@ -163,9 +161,9 @@ code together, so they catch problems that only appear when the pieces are conne
 
 ## Current limitations
 
-Accounts are currently stored in the browser's localStorage, so they only exist on
-one device and browser. A backend with a shared database will be needed for features
-that involve multiple users (following, groups, competitions).
+Accounts work on any device, but catches are still stored in the browser's localStorage, so
+they only exist on one device and browser. The backend will need more features for
+anything that involves multiple users (following, groups, competitions).
 
 
 

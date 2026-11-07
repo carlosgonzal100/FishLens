@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import AuthIllustration from "../components/AuthIllustration";
-import { addAccount, hashPassword, loadAccounts } from "../auth/accounts";
+import { registerAccount } from "../auth/accounts";
 
 type RegistrationErrors = Partial<
   Record<"form" | "firstName" | "lastName" | "email" | "username" | "password", string>
@@ -58,31 +58,19 @@ export default function RegisterScreen({ onBack }: { onBack: () => void }) {
         "Password must contain at least 8 characters, including one letter, one number, and one special character.";
     }
 
-    // AC: username and email must not already be in use
-    const normalizedEmail = email.toLocaleLowerCase();
-    const normalizedUsername = username.toLocaleLowerCase();
-    if (
-      Object.keys(nextErrors).length === 0 &&
-      loadAccounts().some(
-        (account) => account.email === normalizedEmail || account.username === normalizedUsername,
-      )
-    ) {
-      nextErrors.form = "Username or email is already in use.";
-    }
-
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
       return; // something is wrong, so don't create the account
     }
 
-    // AC: everything is valid, so create the account
-    addAccount({
-      firstName,
-      lastName,
-      email: normalizedEmail,
-      username: normalizedUsername,
-      passwordHash: await hashPassword(password),
-    });
+    // AC: everything is valid, so create the account. The database rejects a
+    // username or email that is already in use.
+    const serverErrors = await registerAccount({ firstName, lastName, email, username, password });
+    setErrors(serverErrors);
+    if (Object.keys(serverErrors).length > 0) {
+      return;
+    }
+
     formElement.reset();
     setSuccess("Account successfully created.");
   };
