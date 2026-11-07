@@ -49,7 +49,8 @@ jobs:
     # It never touches the real Atlas database.
     services:
       mongodb:
-        image: mongo:8.0
+        # 9.0, because 8.0 won't start on the newer Linux that GitHub's runners use.
+        image: mongo:9.0
         ports:
           - 27017:27017
         # Wait until MongoDB answers before the steps start.
