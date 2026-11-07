@@ -52,6 +52,12 @@ jobs:
         image: mongo:8.0
         ports:
           - 27017:27017
+        # Wait until MongoDB answers before the steps start.
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -83,7 +89,11 @@ jobs:
         env:
           MONGODB_URI: mongodb://localhost:27017
           DJANGO_SECRET_KEY: test-only-not-a-real-secret
-        run: python manage.py test
+        run: python manage.py test --noinput
+
+      - name: Show MongoDB logs if the tests failed
+        if: failure()
+        run: docker logs "${{ job.services.mongodb.id }}"
 
   deploy:
     name: Deploy
