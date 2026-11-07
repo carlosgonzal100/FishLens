@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { endSession, isSignedIn } from "./auth/session";
 import SplashScreen from "./screens/SplashScreen";
@@ -6,11 +7,26 @@ import SignInScreen from "./screens/SignInScreen";
 import RegisterScreen from "./screens/RegisterScreen";
 import DashboardScreen from "./screens/DashboardScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import AuthenticationSettings from "./AuthenticationSettings";
+import SensitiveAccountScreen from "./screens/SensitiveAccountScreen";
 
-type Screen = "splash" | "starter" | "sign-in" | "register" | "dashboard" | "profile";
+type Screen =
+  | "splash"
+  | "starter"
+  | "sign-in"
+  | "register"
+  | "dashboard"
+  | "profile"
+  | "authentication-settings"
+  | "sensitive-account";
 
 // Screens that only signed-in users may see.
-const PROTECTED_SCREENS: Screen[] = ["dashboard", "profile"];
+const PROTECTED_SCREENS: Screen[] = [
+  "dashboard",
+  "profile",
+  "authentication-settings",
+  "sensitive-account"
+];
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("splash");
@@ -27,7 +43,9 @@ export default function App() {
 
   // US 1.1 / 1.4: signed-out users can't reach protected screens.
   const current: Screen =
-    PROTECTED_SCREENS.includes(screen) && !isSignedIn() ? "starter" : screen;
+    PROTECTED_SCREENS.includes(screen) && !isSignedIn()
+      ? "starter"
+      : screen;
 
   switch (current) {
     case "splash":
@@ -65,7 +83,21 @@ export default function App() {
       );
 
     case "profile":
-      // US 2.1: view profile
-      return <ProfileScreen onBack={() => setScreen("dashboard")} />;
+      return (
+        <ProfileScreen
+          onBack={() => setScreen("dashboard")}
+          onAuthenticationSettings={() => setScreen("authentication-settings")}
+          onManageSensitiveAccount={() => setScreen("sensitive-account")}
+        />
+      );
+
+    case "authentication-settings":
+      return <AuthenticationSettings onBack={() => setScreen("profile")} />;
+
+    case "sensitive-account":
+      return <SensitiveAccountScreen onBack={() => setScreen("profile")} />;
+
+    default:
+      return <StarterScreen onSignIn={() => setScreen("sign-in")} onRegister={() => setScreen("register")} />;
   }
 }
