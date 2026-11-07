@@ -8,6 +8,7 @@ import RegisterScreen from "./screens/RegisterScreen";
 import DashboardScreen from "./screens/DashboardScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import AuthenticationSettings from "./AuthenticationSettings";
+import SensitiveAccountScreen from "./screens/SensitiveAccountScreen";
 
 type Screen =
   | "splash"
@@ -16,13 +17,15 @@ type Screen =
   | "register"
   | "dashboard"
   | "profile"
-  | "authentication-settings";
+  | "authentication-settings"
+  | "sensitive-account";
 
 // Screens that only signed-in users may see.
 const PROTECTED_SCREENS: Screen[] = [
   "dashboard",
   "profile",
   "authentication-settings",
+  "sensitive-account"
 ];
 
 export default function App() {
@@ -79,19 +82,22 @@ export default function App() {
         />
       );
 
-case "profile":
-  return (
-    <ProfileScreen
-      onBack={() => setScreen("dashboard")}
-      onAuthenticationSettings={() =>
-        setScreen("authentication-settings")
-      }
-    />
-  );
+    case "profile":
+      return (
+        <ProfileScreen
+          onBack={() => setScreen("dashboard")}
+          onAuthenticationSettings={() => setScreen("authentication-settings")}
+          onManageSensitiveAccount={() => setScreen("sensitive-account")}
+        />
+      );
 
-case "authentication-settings":
-  return (
-    <AuthenticationSettings
-      onBack={() => setScreen("profile")}
-    />
-  );}}
+    case "authentication-settings":
+      return <AuthenticationSettings onBack={() => setScreen("profile")} />;
+
+    case "sensitive-account":
+      return <SensitiveAccountScreen onBack={() => setScreen("profile")} />;
+
+    default:
+      return <StarterScreen onSignIn={() => setScreen("sign-in")} onRegister={() => setScreen("register")} />;
+  }
+}

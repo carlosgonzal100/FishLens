@@ -20,9 +20,11 @@ function formatDate(date: string): string {
 export default function ProfileScreen({
   onBack,
   onAuthenticationSettings,
+  onManageSensitiveAccount,
 }: {
   onBack: () => void;
   onAuthenticationSettings: () => void;
+  onManageSensitiveAccount: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("summary");
   const profile = getCurrentProfile();
@@ -67,9 +69,16 @@ export default function ProfileScreen({
           className="button button-primary"
           type="button"
           onClick={onAuthenticationSettings}
-    >
+        >
           Authentication Settings
-      </button>
+        </button>
+        <button
+          className="button button-secondary"
+          type="button"
+          onClick={onManageSensitiveAccount}
+        >
+          Manage Sensitive Account
+        </button>
 
         <div className="profile-tabs" role="tablist" aria-label="Profile sections">
           <button
