@@ -1,7 +1,8 @@
 // All FishLens tests are in this file.
 //
 // Integration tests: one test per acceptance criterion (AC) in spec.md. Each test opens
-// the real App and uses it the way a user would, with the real account and session code.
+// the real App and uses it the way a user would, with the real account and session code. Only
+// the backend is fake (see fakeBackend). backend/accounts/tests.py tests the real backend.
 // Unit tests: each test calls a single function directly, without displaying any screens.
 //
 // The project is still changing, so the integration tests look for the meaning of the text on
@@ -13,8 +14,7 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
-import { addAccount, hashPassword, loadAccounts } from "./auth/accounts";
-import { endSession, isSignedIn, startSession } from "./auth/session";
+import { endSession, isSignedIn, saveSessionToken, startSession } from "./auth/session";
 
 // Typing into many fields takes longer than the default 5 second limit.
 vi.setConfig({ testTimeout: 30000 });
@@ -60,8 +60,49 @@ const MESSAGE = { selector: "p" };
 
 let user: UserEvent;
 
+// The accounts the fake backend has saved, like the accounts collection in the database.
+let serverAccounts: RegistrationValues[] = [];
+
+// Stands in for the Django backend, so these tests run without a server or a database.
+async function fakeBackend(url: string, options: RequestInit) {
+  const reply = (status: number, body: unknown) => ({ status, json: async () => body });
+
+  if (url.endsWith("/me/")) {
+    const header = (options.headers as Record<string, string>).Authorization;
+    const account = serverAccounts.find((saved) => header === `Bearer fake-token-${saved.username}`);
+    return account ? reply(200, { account }) : reply(401, { errors: { form: "Please sign in again." } });
+  }
+
+  const values = JSON.parse(String(options.body));
+
+  if (url.endsWith("/register/")) {
+    const account = {
+      ...values,
+      email: values.email.toLowerCase(),
+      username: values.username.toLowerCase(),
+    };
+    const inUse = serverAccounts.some(
+      (saved) => saved.email === account.email || saved.username === account.username,
+    );
+    if (inUse) {
+      return reply(409, { errors: { form: "Username or email is already in use." } });
+    }
+    serverAccounts.push(account);
+    return reply(201, { account });
+  }
+
+  const matches = serverAccounts.some(
+    (saved) => saved.username === values.username && saved.password === values.password,
+  );
+  return matches
+    ? reply(200, { token: `fake-token-${values.username}` })
+    : reply(401, { errors: { form: "Incorrect username or password" } });
+}
+
 beforeEach(() => {
-  localStorage.clear(); // each test starts with no accounts and no one signed in
+  localStorage.clear(); // each test starts with no one signed in
+  serverAccounts = []; // and no accounts
+  vi.stubGlobal("fetch", fakeBackend);
   user = userEvent.setup();
 });
 
@@ -165,43 +206,6 @@ describe("UNIT TESTS: session functions", () => {
   });
 });
 
-describe("UNIT TESTS: account functions", () => {
-  const ACCOUNT = {
-    firstName: "Alex",
-    lastName: "Rivera",
-    email: "angler@example.com",
-    username: "fishfan2024",
-    passwordHash: "abc123",
-  };
-
-  //KEPT: tests if a correct password is given. tests the criteria where when given
-  //a correct password, the user is able to be signed in
-  // Supports User Story 1.3 AC1 (also in the README test plan)
-  it("hashPassword gives the same hash for the same password", async () => {
-    expect(await hashPassword("Fish!2024")).toBe(await hashPassword("Fish!2024"));
-  });
-
-  //KEPT: tests if a different password is given. tests the criteria where when given
-  //a different password, the user is not able to be signed in
-  // Supports User Story 1.3 AC2
-  it("hashPassword gives different hashes for different passwords", async () => {
-    expect(await hashPassword("Fish!2024")).not.toBe(await hashPassword("Fish!2025"));
-  });
-
-  //KEPT: tests if an account is added throuhg the use of
-  //proper inputs from the user when making a valid account.
-  //such as all fields filled and a long enough password and username.
-  //Supports User Story 1.2 AC1
-  it("addAccount saves the account and keeps existing accounts", () => {
-    const secondAccount = { ...ACCOUNT, email: "second@example.com", username: "secondangler" };
-
-    addAccount(ACCOUNT);
-    addAccount(secondAccount);
-
-    expect(loadAccounts()).toEqual([ACCOUNT, secondAccount]);
-  });
-});
-
 describe("INTEGRATION TESTS: User Story 1.1 - Access the Starter Screen", () => {
 
   // KEPT: when i open the app, and am not signed in, i see the sign-in screen
@@ -219,11 +223,12 @@ describe("INTEGRATION TESTS: User Story 1.1 - Access the Starter Screen", () => 
   //other features of the app until i sign in. It tests the app like a user by going to the
   //sign in page and putting in a valid username, but a invalid password and expects the
   //dashboard to no be showing. Then it tests the app again by putting in a valid username and password
-  //and expects the dashboard to be showing.
+  //and expects the dashboard to be showing. Last, it reopens the app with a saved token the
+  //backend rejects and expects the user to be signed out.
   //Supports User Story 1.1 AC2
   it("AC2: a signed-out user cannot reach the app's features until signing in", async () => {
     await registerAccount();
-    openApp();
+    const app = openApp();
 
     expect(dashboardIsShowing()).toBe(false);
     expect(screen.queryByRole("button", { name: UI.profile })).not.toBeInTheDocument();
@@ -237,6 +242,14 @@ describe("INTEGRATION TESTS: User Story 1.1 - Access the Starter Screen", () => 
     // A successful sign-in does.
     await submitSignIn(VALID_ACCOUNT.username, VALID_ACCOUNT.password);
     await waitForDashboard();
+
+    // A saved token the backend rejects doesn't count as signed in.
+    app.unmount();
+    saveSessionToken("not-a-real-token");
+    openApp();
+    await screen.findByRole("button", { name: UI.signIn });
+    expect(isSignedIn()).toBe(false);
+    expect(dashboardIsShowing()).toBe(false);
   });
 
   //KEPT: when the user is signed in, closes the app, and reopens the app, they are still signed in
@@ -249,7 +262,7 @@ describe("INTEGRATION TESTS: User Story 1.1 - Access the Starter Screen", () => 
 
     openApp();
 
-    expect(dashboardIsShowing()).toBe(true);
+    await waitForDashboard(); // after the backend accepts the saved token
     expect(screen.queryByRole("button", { name: UI.register })).not.toBeInTheDocument();
   });
 });
@@ -257,7 +270,7 @@ describe("INTEGRATION TESTS: User Story 1.1 - Access the Starter Screen", () => 
 describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
 
   //KEPT: this test opens the register screen and fills in all the fields with valid information and submits it.
-  //It then checks for the success message and checks if the account was created by checking the length of the accounts
+  //It then checks for the success message and checks if the account was saved by the fake backend
   //Supports User Story 1.2 AC1
   it("AC1: valid, unused details create the account", async () => {
     await openRegisterScreen();
@@ -265,9 +278,8 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
     await submitRegistration(VALID_ACCOUNT);
 
     expect(await screen.findByRole("status")).toHaveTextContent(UI.accountCreated);
-    const accounts = loadAccounts();
-    expect(accounts).toHaveLength(1);
-    expect(accounts[0]).toMatchObject({
+    expect(serverAccounts).toHaveLength(1);
+    expect(serverAccounts[0]).toMatchObject({
       firstName: VALID_ACCOUNT.firstName,
       lastName: VALID_ACCOUNT.lastName,
       email: VALID_ACCOUNT.email,
@@ -276,7 +288,7 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
   });
 
   //KEPT: opens the register screen and fills all fields except one field and submits it. it
-  //then expects a message showing all fields are required and load accounts to have a length of 0.
+  //then expects a message showing all fields are required and no account to be saved.
   //Supports User Story 1.2 AC2
   it("AC2: a missing field shows that all fields are required and creates no account", async () => {
     await openRegisterScreen();
@@ -285,12 +297,12 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
       await submitRegistration({ ...VALID_ACCOUNT, [field]: "" });
 
       expect(await screen.findByRole("alert")).toHaveTextContent(UI.allFieldsRequired);
-      expect(loadAccounts()).toHaveLength(0);
+      expect(serverAccounts).toHaveLength(0);
     }
   });
 
   //KEPT:opens the register screen, fills the account with invalid first and last names and submits it
-  //it then expects a message showing the name requirements and load accounts to have a length of 0.
+  //it then expects a message showing the name requirements and no account to be saved.
   //Supports User Story 1.2 AC3
   it("AC3: an invalid first or last name shows the name requirement and creates no account", async () => {
     await openRegisterScreen();
@@ -303,7 +315,7 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
       await submitRegistration({ ...VALID_ACCOUNT, lastName: name });
       expect(await screen.findByText(UI.lastNameRule, MESSAGE)).toBeInTheDocument();
 
-      expect(loadAccounts()).toHaveLength(0);
+      expect(serverAccounts).toHaveLength(0);
     }
 
     // The limits themselves (3 and 20 letters) are allowed.
@@ -312,7 +324,7 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
   });
 
   //KEPT: an invalid email shows that the format must be valid and creates no account
-  //and expects a message showing the email format requirements and load accounts to have a length of 0.
+  //and expects a message showing the email format requirements and no account to be saved.
   //Supports User Story 1.2 AC4
   it("AC4: an invalid email shows that the format must be valid and creates no account", async () => {
     await openRegisterScreen();
@@ -321,13 +333,13 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
       await submitRegistration({ ...VALID_ACCOUNT, email });
 
       expect(await screen.findByText(UI.emailRule, MESSAGE)).toBeInTheDocument();
-      expect(loadAccounts()).toHaveLength(0);
+      expect(serverAccounts).toHaveLength(0);
     }
   });
 
   //KEPT: a username outside 8-16 characters shows the length requirement which is a length
   //of 8 to 16 characters and creates no account. it expects to find a message that mentions
-  //the username and the 8 and 16 limits, and load accounts to have a length of 0.
+  //the username and the 8 and 16 limits, and no account to be saved.
   // it also tests the proper limits of 8 to 16 letter usernames.
   //Supports User Story 1.2 AC5
   it("AC5: a username outside 8-16 characters shows the length requirement and creates no account", async () => {
@@ -337,7 +349,7 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
       await submitRegistration({ ...VALID_ACCOUNT, username });
 
       expect(await screen.findByText(UI.usernameRule, MESSAGE)).toBeInTheDocument();
-      expect(loadAccounts()).toHaveLength(0);
+      expect(serverAccounts).toHaveLength(0);
     }
 
     // The limits themselves (8 and 16 characters) are allowed.
@@ -349,11 +361,11 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
       username: "b".repeat(16),
     });
     expect(await screen.findByRole("status")).toHaveTextContent(UI.accountCreated);
-    expect(loadAccounts()).toHaveLength(2);
+    expect(serverAccounts).toHaveLength(2);
   });
 
   //KEPT: tests 4 invalid passwords by opening and submitting them in the register screen and
-  //expects a message showing the password requirements and load accounts to have a length of 0.
+  //expects a message showing the password requirements and no account to be saved.
   //it also tests the proper limit of 8 characters for a password with a letter, special char,
   //a number and must be 8 chars or more.
   //Supports User Story 1.2 AC6
@@ -370,7 +382,7 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
       await submitRegistration({ ...VALID_ACCOUNT, password });
 
       expect(await screen.findByText(UI.passwordRule, MESSAGE)).toBeInTheDocument();
-      expect(loadAccounts()).toHaveLength(0);
+      expect(serverAccounts).toHaveLength(0);
     }
 
     // The limit itself (exactly 8 characters) is allowed.
@@ -381,7 +393,7 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
   //KEPT: tests if a username or email already in use is rejected and creates no account. it does this by
   //creating an account that isnt in use already, meaning their passwords and emails arent already in use.
   //then it creates a second and third account with the same username and email, but alternating with different
-  //emails and usernames and expects a message saying it is "already in use" and load accounts to have a length of 1.
+  //emails and usernames and expects a message saying it is "already in use" and only 1 account to be saved.
   //Supports User Story 1.2 AC7
   it("AC7: a username or email already in use is rejected and creates no account", async () => {
     await registerAccount();
@@ -394,7 +406,8 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
       username: VALID_ACCOUNT.username.toUpperCase(),
     });
     expect(await screen.findByRole("alert")).toHaveTextContent(UI.alreadyInUse);
-    expect(loadAccounts()).toHaveLength(1);
+    expect(screen.queryByText(UI.accountCreated)).not.toBeInTheDocument();
+    expect(serverAccounts).toHaveLength(1);
 
     // Same email, different username.
     await submitRegistration({
@@ -403,7 +416,8 @@ describe("INTEGRATION TESTS: User Story 1.2 - Register an Account", () => {
       username: "otherangler",
     });
     expect(await screen.findByRole("alert")).toHaveTextContent(UI.alreadyInUse);
-    expect(loadAccounts()).toHaveLength(1);
+    expect(screen.queryByText(UI.accountCreated)).not.toBeInTheDocument();
+    expect(serverAccounts).toHaveLength(1);
   });
 });
 

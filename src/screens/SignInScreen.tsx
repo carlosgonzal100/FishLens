@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import AuthIllustration from "../components/AuthIllustration";
-import { hashPassword, loadAccounts } from "../auth/accounts";
-import { startSession } from "../auth/session";
+import { signInToAccount } from "../auth/accounts";
+import { saveSessionToken, startSession } from "../auth/session";
 
 // User Story 1.3 — Sign In
 export default function SignInScreen({
@@ -19,20 +19,17 @@ export default function SignInScreen({
     const form = new FormData(event.currentTarget);
     const username = String(form.get("username") ?? "").trim().toLocaleLowerCase();
     const password = String(form.get("password") ?? "");
-    const passwordHash = await hashPassword(password);
-
-    const accountMatches = loadAccounts().some(
-      (account) => account.username === username && account.passwordHash === passwordHash,
-    );
+    const result = await signInToAccount(username, password);
 
     // AC: wrong username or password shows this exact message and lets them retry
-    if (!accountMatches) {
-      setError("Incorrect username or password");
+    if ("error" in result) {
+      setError(result.error);
       return;
     }
 
     // AC: correct username and password signs in and opens the dashboard.
     // The username is saved too, so the profile knows who is signed in (US 2.1).
+    saveSessionToken(result.token);
     startSession(username);
     setError("");
     onSuccess();

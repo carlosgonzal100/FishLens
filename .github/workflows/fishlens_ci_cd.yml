@@ -45,6 +45,20 @@ jobs:
     name: Test
     needs: dependencies
     runs-on: ubuntu-latest
+    # A temporary MongoDB for the backend tests, deleted when the job ends.
+    # It never touches the real Atlas database.
+    services:
+      mongodb:
+        # 9.0, because 8.0 won't start on the newer Linux that GitHub's runners use.
+        image: mongo:9.0
+        ports:
+          - 27017:27017
+        # Wait until MongoDB answers before the steps start.
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -62,6 +76,25 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      - name: Install Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run backend tests
+        working-directory: backend
+        env:
+          MONGODB_URI: mongodb://localhost:27017
+          DJANGO_SECRET_KEY: test-only-not-a-real-secret
+        run: python manage.py test --noinput
+
+      - name: Show MongoDB logs if the tests failed
+        if: failure()
+        run: docker logs "${{ job.services.mongodb.id }}"
 
   deploy:
     name: Deploy
