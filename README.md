@@ -17,7 +17,9 @@ user stories and acceptance criteria. Work is tracked in the repo's Issues tab.
 
 - React + TypeScript
 - Vite (development server and build tool)
-- Deployed on Vercel
+- Django + django-mongodb-backend (backend API)
+- MongoDB Atlas (database)
+- Deployed on Vercel (the React app and the backend are separate Vercel projects)
 
 ## Architecture
 
@@ -75,7 +77,8 @@ pnpm install
 pnpm dev
 ```
 
-Then open http://localhost:8443 in your browser.
+Then open http://localhost:8443 in your browser. The app uses the live backend by default,
+so no backend setup is needed.
 
 ## Project structure
 
@@ -83,7 +86,9 @@ Then open http://localhost:8443 in your browser.
 - `src/App.tsx`: top-level component that decides which screen to show
 - `src/screens/`: full pages (starter, sign in, register, dashboard)
 - `src/components/`: reusable UI pieces
-- `src/auth/`: account storage and session logic
+- `src/auth/`: account and session logic (accounts are sent to and loaded from the backend)
+- `backend/`: Django backend
+- `backend/accounts/`: account model, API endpoints (register, sign in, signed-in account), and backend tests
 
 ## Test Plan Overview
 
@@ -99,9 +104,12 @@ based on the acceptance criteria in `spec.md`, so each test can be traced back t
 | **React Testing Library** + **user-event** | Displays a screen and simulates a user typing and clicking (integration tests) |
 | **jest-dom** | Adds checks for what is on the page, such as whether an element is showing (integration tests) |
 | **jsdom** | A simulated browser that gives tests access to `localStorage` and a page to draw screens on |
+| **Django test runner** | Runs the backend tests against a temporary MongoDB database |
 
-Tests are run with `pnpm test`. Browser storage is cleared before each test so that tests do not
-affect each other.
+Frontend tests are run with `pnpm test`. Browser storage is cleared before each test so that tests
+do not affect each other, and a fake backend stands in for the real server so the tests don't
+need it running. Backend tests are run with `python manage.py test` in the `backend` folder.
+The pipeline runs both.
 
 ---
 
@@ -158,6 +166,53 @@ code together, so they catch problems that only appear when the pieces are conne
 | 1.1 / 1.4 | Sign out, then try to reach the dashboard | The user is sent back to the starter screen |
 
 
+
+## CI/CD Pipeline
+
+The workflow is in [.github/workflows/fishlens_ci_cd.yml](.github/workflows/fishlens_ci_cd.yml).
+It runs automatically on every push and every pull request to `main`, in four stages:
+
+| Stage | What it does |
+|---|---|
+| **Setup** | Checks out the code and installs Node.js 22 and pnpm |
+| **Dependencies** | Installs the project's packages with `pnpm install --frozen-lockfile` |
+| **Test** | Runs the frontend tests (`pnpm test`), then the backend tests (`python manage.py test`) against a temporary MongoDB that is deleted when the job ends |
+| **Deploy** | Builds the React app and deploys it to Vercel. Runs only on pushes to `main`, after Test passes |
+
+The backend is deployed by Vercel's GitHub integration whenever `main` changes.
+
+## Branch Protection
+
+`main` is protected by a GitHub ruleset that:
+
+1. Blocks direct pushes to `main`
+2. Requires a pull request with at least one approval from a teammate
+3. Requires the Setup, Dependencies, and Test stages to pass before merging
+
+## Feature Development
+
+Each feature is built on its own branch and merged into `main` through a pull request that a
+teammate approves and that passes the pipeline.
+
+| User story | Pull request |
+|---|---|
+| 1.1–1.4: sign-in screen, registration, sign in, sign out (tests for every acceptance criterion) | #49 |
+| 1.2, 1.3: accounts stored in MongoDB through the Django backend (backend tests) | #52 |
+| 1.6: manage sensitive account information (frontend) | #51 |
+| 2.1: view profile | #50 |
+
+## Secrets
+
+No secrets are stored in the code, the workflow file, or the commit history.
+
+| Secret | Stored in | Used for |
+|---|---|---|
+| `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` | GitHub Secrets | The Deploy stage |
+| `MONGODB_URI`, `DJANGO_SECRET_KEY` | Vercel environment variables (backend project) | The live backend, which Vercel runs |
+
+On your own computer, backend secrets go in `backend/.env`, which Git ignores. `backend/.env.example`
+shows the names with placeholder values. The `DJANGO_SECRET_KEY` in the workflow file is a
+placeholder used only for the temporary test database, not a real secret.
 
 ## Current limitations
 
