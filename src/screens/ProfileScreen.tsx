@@ -21,10 +21,12 @@ export default function ProfileScreen({
   onBack,
   onAuthenticationSettings,
   onManageSensitiveAccount,
+  onDeleteAccount,
 }: {
   onBack: () => void;
   onAuthenticationSettings: () => void;
   onManageSensitiveAccount: () => void;
+  onDeleteAccount: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("summary");
   const profile = getCurrentProfile();
@@ -78,6 +80,13 @@ export default function ProfileScreen({
           onClick={onManageSensitiveAccount}
         >
           Manage Sensitive Account
+        </button>
+        <button
+           className="button button-secondary"
+            type="button"
+            onClick={onDeleteAccount}
+        >
+            Delete Account
         </button>
 
         <div className="profile-tabs" role="tablist" aria-label="Profile sections">

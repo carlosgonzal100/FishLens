@@ -1,0 +1,55 @@
+
+.delete-account-screen {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+}
+
+.delete-account-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: white;
+  color: #111827;
+}
+
+.delete-account-back {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 24px;
+  color: #2563eb;
+}
+
+.delete-account-warning {
+  padding: 12px;
+  background: #fef3c7;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.delete-account-button {
+  background: #b91c1c;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.delete-account-panel {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+}
+
+.delete-account-panel button {
+  padding: 10px 16px;
+  cursor: pointer;
+}

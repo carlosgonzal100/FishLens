@@ -10,6 +10,7 @@ import DashboardScreen from "./screens/DashboardScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import AuthenticationSettings from "./AuthenticationSettings";
 import SensitiveAccountScreen from "./screens/SensitiveAccountScreen";
+import DeleteAccountScreen from "./screens/DeleteAccountScreen";
 
 type Screen =
   | "splash"
@@ -19,14 +20,16 @@ type Screen =
   | "dashboard"
   | "profile"
   | "authentication-settings"
-  | "sensitive-account";
+  | "sensitive-account"
+  | "delete-account";
 
 // Screens that only signed-in users may see.
 const PROTECTED_SCREENS: Screen[] = [
   "dashboard",
   "profile",
   "authentication-settings",
-  "sensitive-account"
+  "sensitive-account",
+  "delete-account",
 ];
 
 export default function App() {
@@ -97,6 +100,7 @@ export default function App() {
           onBack={() => setScreen("dashboard")}
           onAuthenticationSettings={() => setScreen("authentication-settings")}
           onManageSensitiveAccount={() => setScreen("sensitive-account")}
+          onDeleteAccount={() => setScreen("delete-account")}
         />
       );
 
@@ -105,6 +109,9 @@ export default function App() {
 
     case "sensitive-account":
       return <SensitiveAccountScreen onBack={() => setScreen("profile")} />;
+    
+    case "delete-account":
+       return  <DeleteAccountScreen onBack={() => setScreen("profile")} />;
 
     default:
       return <StarterScreen onSignIn={() => setScreen("sign-in")} onRegister={() => setScreen("register")} />;
