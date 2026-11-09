@@ -1,9 +1,17 @@
 /* User Story 2.1 — Profile screen (colors match the Figma prototype) */
 
+/* Its own card, so it doesn't inherit the dashboard's two-column layout */
 .profile-card {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  box-sizing: border-box;
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 28px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(11, 58, 83, 0.12);
   text-align: left;
 }
 
@@ -132,4 +140,53 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+/* User Story 2.3 — Edit profile name */
+
+.profile-header > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-edit-button,
+.profile-cancel-button {
+  padding: 8px 14px;
+  border: 1.5px solid #1c7c8c;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1c7c8c;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.profile-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid #d5dee3;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.profile-edit label {
+  margin-top: 6px;
+  color: #5b6770;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.profile-edit input {
+  padding: 12px;
+  border: 1px solid #d5dee3;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.profile-edit-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
 }

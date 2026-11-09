@@ -41,6 +41,21 @@ def public_account(account):
     }
 
 
+# Letters only, from any language: \w without digits and underscores.
+VALID_NAME = re.compile(r"[^\W\d_]{3,20}")
+
+
+def name_errors(first_name, last_name, required=False):
+    # User Stories 1.2 and 2.3: a first or last name must be 3 to 20 letters.
+    # With required=True, an empty name breaks the rule too.
+    errors = {}
+    if (first_name or required) and not VALID_NAME.fullmatch(first_name):
+        errors["firstName"] = "First name must contain 3 to 20 letters only."
+    if (last_name or required) and not VALID_NAME.fullmatch(last_name):
+        errors["lastName"] = "Last name must contain 3 to 20 letters only."
+    return errors
+
+
 def registration_errors(first_name, last_name, email, username, password):
     # The same rules as src/screens/RegisterScreen.tsx (User Story 1.2).
     errors = {}
@@ -48,12 +63,7 @@ def registration_errors(first_name, last_name, email, username, password):
     if not all([first_name, last_name, email, username, password]):
         errors["form"] = "All fields are required."
 
-    # Letters only, from any language: \w without digits and underscores.
-    valid_name = re.compile(r"[^\W\d_]{3,20}")
-    if first_name and not valid_name.fullmatch(first_name):
-        errors["firstName"] = "First name must contain 3 to 20 letters only."
-    if last_name and not valid_name.fullmatch(last_name):
-        errors["lastName"] = "Last name must contain 3 to 20 letters only."
+    errors.update(name_errors(first_name, last_name))
 
     if email and not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
         errors["email"] = "Email must have a valid format."
@@ -132,16 +142,51 @@ def sign_in(request):
     return JsonResponse({"account": public_account(account), "token": token})
 
 
-@require_GET
-def me(request):
+def signed_in_account(request):
+    # Reads the token from the Authorization header. Returns the account it
+    # belongs to, or None if the token is missing, changed, or faked.
     header = request.headers.get("Authorization", "")
     try:
         username = signing.loads(header.removeprefix("Bearer "), salt=TOKEN_SALT)
     except signing.BadSignature:
-        username = None
+        return None
+    return Account.objects.filter(username=username).first()
 
-    account = Account.objects.filter(username=username).first() if username else None
+
+SIGN_IN_AGAIN = {"errors": {"form": "Please sign in again."}}
+
+
+@require_GET
+def me(request):
+    account = signed_in_account(request)
     if not account:
-        return JsonResponse({"errors": {"form": "Please sign in again."}}, status=401)
+        return JsonResponse(SIGN_IN_AGAIN, status=401)
 
+    return JsonResponse({"account": public_account(account)})
+
+
+@require_POST
+def update_name(request):
+    """User Story 2.3 - Edit Profile Information"""
+    # The token decides whose name changes, so users can only edit their own.
+    account = signed_in_account(request)
+    if not account:
+        return JsonResponse(SIGN_IN_AGAIN, status=401)
+
+    data = read_json(request)
+    if data is None:
+        return JsonResponse({"errors": {"form": "The request must be valid JSON."}}, status=400)
+
+    first_name = text_field(data, "firstName")
+    last_name = text_field(data, "lastName")
+
+    # AC: a name that breaks the rule is not saved, and the user is told the rule.
+    errors = name_errors(first_name, last_name, required=True)
+    if errors:
+        return JsonResponse({"errors": errors}, status=400)
+
+    # AC: a valid name is saved.
+    account.first_name = first_name
+    account.last_name = last_name
+    account.save(update_fields=["first_name", "last_name"])
     return JsonResponse({"account": public_account(account)})

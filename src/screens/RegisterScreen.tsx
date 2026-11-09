@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import AuthIllustration from "../components/AuthIllustration";
 import { registerAccount } from "../auth/accounts";
+import { validateName } from "../auth/validation";
 
 type RegistrationErrors = Partial<
   Record<"form" | "firstName" | "lastName" | "email" | "username" | "password", string>
@@ -30,13 +31,11 @@ export default function RegisterScreen({ onBack }: { onBack: () => void }) {
     }
 
     // AC: first/last name must be 3–20 letters, no numbers or symbols
-    const validName = /^\p{L}{3,20}$/u;
-    if (firstName && !validName.test(firstName)) {
-      nextErrors.firstName = "First name must contain 3 to 20 letters only.";
-    }
-    if (lastName && !validName.test(lastName)) {
-      nextErrors.lastName = "Last name must contain 3 to 20 letters only.";
-    }
+    // (shared with Edit Profile, User Story 2.3)
+    const firstNameError = firstName ? validateName(firstName, "First name") : null;
+    const lastNameError = lastName ? validateName(lastName, "Last name") : null;
+    if (firstNameError) nextErrors.firstName = firstNameError;
+    if (lastNameError) nextErrors.lastName = lastNameError;
 
     // AC: email must have a valid format
     const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

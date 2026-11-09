@@ -82,3 +82,23 @@ export async function loadSignedInAccount(): Promise<"loaded" | "rejected" | "un
     return "unreachable";
   }
 }
+
+// Saves a new first and last name for the signed-in user (User Story 2.3).
+// The token decides whose name changes. Returns any errors, or nothing if it worked.
+export async function updateAccountName(firstName: string, lastName: string): Promise<FormErrors> {
+  try {
+    const { status, body } = await send("me/name/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getSessionToken()}`,
+      },
+      body: JSON.stringify({ firstName, lastName }),
+    });
+    if (status !== 200) return body.errors;
+    accounts = [body.account]; // show the new name right away
+    return {};
+  } catch {
+    return { form: SERVER_ERROR };
+  }
+}
