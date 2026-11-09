@@ -15,6 +15,7 @@ import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { endSession, isSignedIn, saveSessionToken, startSession } from "./auth/session";
+import { validateName } from "./auth/validation";
 
 // Typing into many fields takes longer than the default 5 second limit.
 vi.setConfig({ testTimeout: 30000 });
@@ -52,6 +53,10 @@ const UI = {
   passwordRule: /password.*\b8\b/i,
   alreadyInUse: /already in use/i,
   incorrectSignIn: "Incorrect username or password", // exact wording required by spec.md
+  viewProfile: /view profile/i,
+  editName: /edit name/i,
+  save: /^save$/i,
+  nameUpdated: /updated/i,
 };
 
 // Requirement messages are paragraphs. Looking only at paragraphs stops a test from
@@ -71,6 +76,17 @@ async function fakeBackend(url: string, options: RequestInit) {
     const header = (options.headers as Record<string, string>).Authorization;
     const account = serverAccounts.find((saved) => header === `Bearer fake-token-${saved.username}`);
     return account ? reply(200, { account }) : reply(401, { errors: { form: "Please sign in again." } });
+  }
+
+  // User Story 2.3: the token decides whose name changes.
+  if (url.endsWith("/me/name/")) {
+    const header = (options.headers as Record<string, string>).Authorization;
+    const account = serverAccounts.find((saved) => header === `Bearer fake-token-${saved.username}`);
+    if (!account) return reply(401, { errors: { form: "Please sign in again." } });
+    const { firstName, lastName } = JSON.parse(String(options.body));
+    account.firstName = firstName;
+    account.lastName = lastName;
+    return reply(200, { account });
   }
 
   const values = JSON.parse(String(options.body));
@@ -499,3 +515,77 @@ describe("INTEGRATION TESTS: User Story 1.4 - Sign Out", () => {
     await waitForDashboard();
   });
 });
+
+// Opens the profile from the dashboard's profile menu.
+async function openProfile() {
+  await user.click(screen.getByRole("button", { name: UI.profile }));
+  await user.click(screen.getByRole("menuitem", { name: UI.viewProfile }));
+  await screen.findByRole("button", { name: UI.editName });
+}
+
+// Replaces the names in the edit form and saves.
+async function saveName(firstName: string, lastName: string) {
+  for (const [field, value] of [
+    [FIELD_LABELS.firstName, firstName],
+    [FIELD_LABELS.lastName, lastName],
+  ] as const) {
+    const input = screen.getByLabelText(field);
+    await user.clear(input);
+    if (value) await user.type(input, value);
+  }
+  await user.click(screen.getByRole("button", { name: UI.save }));
+}
+
+describe("UNIT TESTS: name rule (User Stories 1.2 and 2.3)", () => {
+  //Supports User Story 2.3 AC1: names of 3 to 20 letters, from any language, are allowed
+  it("accepts names of 3 to 20 letters, including accented letters", () => {
+    for (const name of ["Ann", "Alexander", "José", "A".repeat(20)]) {
+      expect(validateName(name, "First name")).toBeNull();
+    }
+  });
+
+  //Supports User Story 2.3 AC2: anything else breaks the rule, and the message says which name
+  it("rejects names that are too short, too long, or have numbers, symbols, or spaces", () => {
+    for (const name of ["", "Al", "A".repeat(21), "Carl0s", "Car!os", "Mary Ann"]) {
+      expect(validateName(name, "Last name")).toBe("Last name must contain 3 to 20 letters only.");
+    }
+  });
+});
+
+describe("INTEGRATION TESTS: User Story 2.3 - Edit Profile Information", () => {
+  //Signs in, opens the profile, saves a new valid name, and expects the new name on the
+  //profile and in the (fake) database.
+  //Supports User Story 2.3 AC1
+  it("AC1: a valid first and last name can be saved", async () => {
+    await signInThroughApp();
+    await openProfile();
+    await user.click(screen.getByRole("button", { name: UI.editName }));
+
+    await saveName("Alexander", "Dana");
+
+    expect(await screen.findByRole("heading", { name: /alexander dana/i })).toBeInTheDocument();
+    expect(screen.getByText(UI.nameUpdated, MESSAGE)).toBeInTheDocument();
+    expect(serverAccounts[0]).toMatchObject({ firstName: "Alexander", lastName: "Dana" });
+  });
+
+  //Signs in, opens the profile, and tries invalid first and last names. Expects the name
+  //requirement to show and nothing to be saved.
+  //Supports User Story 2.3 AC2
+  it("AC2: an invalid name is not saved and the name requirement is shown", async () => {
+    await signInThroughApp();
+    await openProfile();
+    await user.click(screen.getByRole("button", { name: UI.editName }));
+
+    for (const badName of ["Al", "Carl0s", "Car!os"]) {
+      await saveName(badName, "Rivera");
+      expect(screen.getByText(UI.firstNameRule, MESSAGE)).toBeInTheDocument();
+
+      await saveName("Alex", badName);
+      expect(screen.getByText(UI.lastNameRule, MESSAGE)).toBeInTheDocument();
+    }
+
+    expect(screen.getByRole("heading", { name: /alex rivera/i })).toBeInTheDocument();
+    expect(serverAccounts[0]).toMatchObject({ firstName: "Alex", lastName: "Rivera" });
+  });
+});
+

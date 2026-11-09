@@ -10,6 +10,7 @@ from .models import Account
 REGISTER_URL = "/api/accounts/register/"
 SIGN_IN_URL = "/api/accounts/sign-in/"
 ME_URL = "/api/accounts/me/"
+NAME_URL = "/api/accounts/me/name/"
 
 VALID_ACCOUNT = {
     "firstName": "Alex",
@@ -153,3 +154,63 @@ class ProfileTests(AccountsTestCase):
         for headers in [{}, {"Authorization": "Bearer fishfan2024"}, {"Authorization": f"Bearer {token}x"}]:
             with self.subTest(headers=headers):
                 self.assertEqual(self.client.get(ME_URL, headers=headers).status_code, 401)
+
+
+class EditProfileTests(AccountsTestCase):
+    """User Story 2.3 - Edit Profile Information"""
+
+    def sign_in(self, username="fishfan2024", password="Fish!2024"):
+        return self.post(SIGN_IN_URL, {"username": username, "password": password}).json()["token"]
+
+    def update_name(self, token, first_name, last_name):
+        return self.client.post(
+            NAME_URL,
+            data=json.dumps({"firstName": first_name, "lastName": last_name}),
+            content_type="application/json",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    def test_ac1_a_valid_name_is_saved(self):
+        self.register()
+        response = self.update_name(self.sign_in(), "Alexander", "Dana")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["account"]["firstName"], "Alexander")
+        account = Account.objects.get()
+        self.assertEqual(account.first_name, "Alexander")
+        self.assertEqual(account.last_name, "Dana")
+
+    def test_ac2_an_invalid_name_is_not_saved_and_the_rule_is_shown(self):
+        self.register()
+        token = self.sign_in()
+        for name in ["", "Al", "A" * 21, "Carl0s", "Car!os"]:
+            with self.subTest(name=name):
+                response = self.update_name(token, name, "Rivera")
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("3 to 20 letters", response.json()["errors"]["firstName"])
+
+                response = self.update_name(token, "Alex", name)
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("3 to 20 letters", response.json()["errors"]["lastName"])
+
+        account = Account.objects.get()
+        self.assertEqual(account.first_name, "Alex")
+        self.assertEqual(account.last_name, "Rivera")
+
+    def test_a_name_can_only_be_changed_by_someone_signed_in(self):
+        self.register()
+        token = self.sign_in()
+        for bad_token in ["", "fishfan2024", f"{token}x"]:
+            with self.subTest(token=bad_token):
+                self.assertEqual(self.update_name(bad_token, "Alexander", "Dana").status_code, 401)
+        self.assertEqual(Account.objects.get().first_name, "Alex")
+
+    def test_a_user_can_only_change_their_own_name(self):
+        self.register()
+        self.register(email="other@example.com", username="otherangler", firstName="Jordan")
+        self.update_name(self.sign_in(), "Alexander", "Dana")
+
+        other = Account.objects.get(username="otherangler")
+        self.assertEqual(other.first_name, "Jordan")
+        self.assertEqual(other.last_name, "Rivera")
+

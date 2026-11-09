@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { getCurrentProfile, getInitials } from "../profile/profile";
+import { FormEvent, useState } from "react";
+import { getCurrentProfile, getInitials, saveProfileName, type NameErrors } from "../profile/profile";
 import { loadCatches, summarizeCatches } from "../catches/catches";
 import "./ProfileScreen.css";
 
@@ -16,7 +16,7 @@ function formatDate(date: string): string {
   });
 }
 
-// User Story 2.1 — View Profile
+// User Stories 2.1 (View Profile) and 2.3 (Edit Profile Information)
 export default function ProfileScreen({
   onBack,
   onAuthenticationSettings,
@@ -29,12 +29,44 @@ export default function ProfileScreen({
   onDeleteAccount: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("summary");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [errors, setErrors] = useState<NameErrors>({});
   const profile = getCurrentProfile();
+
+  // US 2.3: save the new name, or show which rule it broke
+  const handleSave = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); // stop the page from reloading
+    const form = new FormData(event.currentTarget);
+    setSaving(true);
+    const nextErrors = await saveProfileName(
+      String(form.get("firstName") ?? ""),
+      String(form.get("lastName") ?? ""),
+    );
+    setSaving(false);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length === 0) {
+      setEditing(false);
+      setSaved(true);
+    }
+  };
+
+  const startEditing = () => {
+    setErrors({});
+    setSaved(false);
+    setEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setErrors({});
+    setEditing(false);
+  };
 
   if (!profile) {
     return (
       <main className="dashboard-screen">
-        <section className="dashboard-card profile-card">
+        <section className="profile-card">
           <p role="alert">We couldn't load your profile. Please sign out and sign in again.</p>
           <button className="button button-primary" type="button" onClick={onBack}>
             Back
@@ -49,7 +81,7 @@ export default function ProfileScreen({
 
   return (
     <main className="dashboard-screen">
-      <section className="dashboard-card profile-card">
+      <section className="profile-card">
         <button className="profile-back" type="button" onClick={onBack}>
           ← Back
         </button>
@@ -65,7 +97,58 @@ export default function ProfileScreen({
             </h1>
             <p className="profile-username">@{profile.username}</p>
           </div>
+          {!editing && (
+            <button className="profile-edit-button" type="button" onClick={startEditing}>
+              Edit name
+            </button>
+          )}
         </header>
+
+        {saved && (
+          <p className="form-message form-success" role="status">
+            Your name was updated.
+          </p>
+        )}
+
+        {/* US 2.3: edit first and last name */}
+        {editing && (
+          <form className="profile-edit" onSubmit={handleSave} noValidate>
+            {errors.form && (
+              <p className="form-message form-error" role="alert">
+                {errors.form}
+              </p>
+            )}
+
+            <label htmlFor="editFirstName">First name</label>
+            <input
+              id="editFirstName"
+              name="firstName"
+              type="text"
+              autoComplete="given-name"
+              defaultValue={profile.firstName}
+            />
+            {errors.firstName && <p className="field-error">{errors.firstName}</p>}
+
+            <label htmlFor="editLastName">Last name</label>
+            <input
+              id="editLastName"
+              name="lastName"
+              type="text"
+              autoComplete="family-name"
+              defaultValue={profile.lastName}
+            />
+            {errors.lastName && <p className="field-error">{errors.lastName}</p>}
+
+            <div className="profile-edit-actions">
+              <button className="button button-primary" type="submit" disabled={saving}>
+                {saving ? "Saving…" : "Save"}
+              </button>
+              <button className="profile-cancel-button" type="button" onClick={cancelEditing}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
 
         <button
           className="button button-primary"
