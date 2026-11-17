@@ -49,9 +49,8 @@ flowchart LR
 | Accounts & Security | Sign in, registration, verification, trust levels | 1 |
 | Profiles & Catches | Profiles, pictures, catch history | 2 |
 | Social | Following, private accounts, timeline | 3 |
-| Groups & Competitions | Group membership, competitions | 4 |
-| Fish Info & Regulations | Species, regulations, licenses, protected species | 5 |
-| AI Gateway | Fish identification and AI assistant | 6 |
+| Fish Info & Regulations | Species, regulations, licenses, protected species | 4 |
+| AI Gateway | Fish identification and AI assistant | 5 |
 
 **Current status:** Accounts are stored in MongoDB Atlas through a Django backend hosted on
 Vercel. The browser's `localStorage` only keeps the signed-in session and the user's catches.
