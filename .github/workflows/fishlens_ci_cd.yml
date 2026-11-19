@@ -96,6 +96,41 @@ jobs:
         if: failure()
         run: docker logs "${{ job.services.mongodb.id }}"
 
+  # User Story 6.2: runs the golden set against the real Claude and fails the
+  # check if the AI's answers fall below the thresholds or drift from
+  # backend/evals/baseline.json. Pull requests only, since each run costs money.
+  eval:
+    name: Eval
+    needs: test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run the eval suite
+        working-directory: backend
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_MODEL: claude-sonnet-5-5
+          FISH_CHAT_PROMPT_VERSION: v2
+        run: python evals/run_evals.py
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-results
+          path: backend/evals/results.json
+
   deploy:
     name: Deploy
     needs: test
