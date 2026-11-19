@@ -111,6 +111,8 @@ class AskTheAssistantTests(ChatTestCase):
         # The model comes from the LLM_MODEL setting, and no temperature is sent.
         self.assertEqual(request["model"], "test-model")
         self.assertNotIn("temperature", request)
+        # Thinking is off, so it can't use up max_tokens and cut the answer off.
+        self.assertEqual(request["thinking"], {"type": "between_tools"})
 
     def test_ac2_a_where_to_catch_question_gets_location_information(self):
         self.fake_claude(claude_reply("Fluke are caught in the South Shore bays and inlets."))

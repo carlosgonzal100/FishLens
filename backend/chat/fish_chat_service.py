@@ -42,6 +42,9 @@ def call_llm(client, question, version):
         model=model,
         max_tokens=MAX_TOKENS,
         system=load_prompt(version),
+        # Sonnet 5.5 thinks before answering by default, and that thinking uses up
+        # max_tokens and cuts the answer off. A short fish answer doesn't need it.
+        thinking={"type": "between_tools"},
         # The tags separate the user's text from our instructions.
         messages=[{"role": "user", "content": f"<question>{question}</question>"}],
     )
@@ -62,7 +65,7 @@ def answer_question(question, client=None):
     source is "llm:<prompt version>" for a Claude answer, or "fallback" when
     the call fails, times out, or returns an unusable answer.
     """
-    version = os.environ.get("FISH_CHAT_PROMPT_VERSION", "v1")
+    version = os.environ.get("FISH_CHAT_PROMPT_VERSION", "v2")
     try:
         client = client or make_client()
         answer = call_llm(client, question, version)
