@@ -1,6 +1,8 @@
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useRef, useState } from "react";
+import { updateProfilePicture } from "../auth/accounts";
 import { getCurrentProfile, getInitials, saveProfileName, type NameErrors } from "../profile/profile";
 import { loadCatches, summarizeCatches } from "../catches/catches";
+import { checkImageFile, getCurrentPicture, resizeImage } from "../profile/profilePicture";
 import "./ProfileScreen.css";
 
 type Tab = "summary" | "history";
@@ -16,7 +18,10 @@ function formatDate(date: string): string {
   });
 }
 
-// User Stories 2.1 (View Profile) and 2.3 (Edit Profile Information)
+type PictureMessage = { kind: "error" | "success"; text: string } | null;
+
+// User Stories 2.1 (View Profile), 2.2 (Manage Profile Picture),
+// and 2.3 (Edit Profile Information)
 export default function ProfileScreen({
   onBack,
   onAuthenticationSettings,
@@ -33,7 +38,39 @@ export default function ProfileScreen({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [errors, setErrors] = useState<NameErrors>({});
+  const [pictureMessage, setPictureMessage] = useState<PictureMessage>(null);
+  const [uploading, setUploading] = useState(false);
+  const chooseInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const profile = getCurrentProfile();
+
+  // US 2.2: use a picture from the device or the camera as the profile picture
+  const handlePicture = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = ""; // lets the same file be picked again later
+    if (!file) return;
+
+    const problem = checkImageFile(file);
+    if (problem) {
+      setPictureMessage({ kind: "error", text: problem });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const errors = await updateProfilePicture(await resizeImage(file));
+      setPictureMessage(
+        errors.form
+          ? { kind: "error", text: errors.form }
+          : { kind: "success", text: "Profile picture updated." },
+      );
+    } catch {
+      setPictureMessage({ kind: "error", text: "We couldn't use that picture. Please try another one." });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // US 2.3: save the new name, or show which rule it broke
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
@@ -78,6 +115,7 @@ export default function ProfileScreen({
 
   const catches = loadCatches(profile.username);
   const summary = summarizeCatches(catches);
+  const picture = getCurrentPicture();
 
   return (
     <main className="dashboard-screen">
@@ -89,7 +127,7 @@ export default function ProfileScreen({
         {/* AC: first name, last name, username, and profile picture */}
         <header className="profile-header">
           <div className="profile-avatar" role="img" aria-label="Profile picture">
-            {getInitials(profile)}
+            {picture ? <img src={picture} alt="" /> : getInitials(profile)}
           </div>
           <div>
             <h1>
@@ -103,6 +141,52 @@ export default function ProfileScreen({
             </button>
           )}
         </header>
+
+        {/* US 2.2: choose an existing image, or take a new one with the camera */}
+        <div className="profile-picture-actions">
+          <button
+            className="profile-edit-button"
+            type="button"
+            disabled={uploading}
+            onClick={() => chooseInput.current?.click()}
+          >
+            Choose photo
+          </button>
+          <button
+            className="profile-edit-button"
+            type="button"
+            disabled={uploading}
+            onClick={() => cameraInput.current?.click()}
+          >
+            Take photo
+          </button>
+          <input
+            ref={chooseInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="Choose a profile picture"
+            hidden
+            onChange={handlePicture}
+          />
+          <input
+            ref={cameraInput}
+            type="file"
+            accept="image/*"
+            capture="user"
+            aria-label="Take a profile picture"
+            hidden
+            onChange={handlePicture}
+          />
+        </div>
+
+        {pictureMessage && (
+          <p
+            className={`form-message ${pictureMessage.kind === "error" ? "form-error" : "form-success"}`}
+            role={pictureMessage.kind === "error" ? "alert" : "status"}
+          >
+            {pictureMessage.text}
+          </p>
+        )}
 
         {saved && (
           <p className="form-message form-success" role="status">

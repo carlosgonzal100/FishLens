@@ -9,6 +9,9 @@ class Account(models.Model):
     email = models.EmailField(unique=True)  # saved in lowercase
     username = models.CharField(max_length=16, unique=True)  # saved in lowercase
     password = models.CharField(max_length=128)  # a salted hash, never the real password
+    # User Story 2.2: a small JPEG saved as a data URL ("data:image/jpeg;base64,...").
+    # Empty when the user hasn't set a picture.
+    profile_picture = models.TextField(blank=True, default="")
 
     class Meta:
         db_table = "accounts"
