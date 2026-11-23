@@ -15,6 +15,7 @@ export type Account = {
   email: string; // saved in lowercase
   username: string; // saved in lowercase
   passwordHash?: string; // the backend never sends this to the app
+  profilePicture?: string | null; // a small JPEG data URL (User Story 2.2)
 };
 
 type FormErrors = Record<string, string>;
@@ -97,6 +98,26 @@ export async function updateAccountName(firstName: string, lastName: string): Pr
     });
     if (status !== 200) return body.errors;
     accounts = [body.account]; // show the new name right away
+    return {};
+  } catch {
+    return { form: SERVER_ERROR };
+  }
+}
+
+// Saves a new profile picture for the signed-in user (User Story 2.2).
+// The token decides whose picture changes. Returns any errors, or nothing if it worked.
+export async function updateProfilePicture(picture: string): Promise<FormErrors> {
+  try {
+    const { status, body } = await send("me/picture/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getSessionToken()}`,
+      },
+      body: JSON.stringify({ picture }),
+    });
+    if (status !== 200) return body.errors;
+    accounts = [body.account]; // show the new picture right away
     return {};
   } catch {
     return { form: SERVER_ERROR };

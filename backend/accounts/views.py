@@ -1,3 +1,5 @@
+import base64
+import binascii
 import json
 import re
 
@@ -38,6 +40,7 @@ def public_account(account):
         "lastName": account.last_name,
         "email": account.email,
         "username": account.username,
+        "profilePicture": account.profile_picture or None,
     }
 
 
@@ -189,4 +192,51 @@ def update_name(request):
     account.first_name = first_name
     account.last_name = last_name
     account.save(update_fields=["first_name", "last_name"])
+    return JsonResponse({"account": public_account(account)})
+
+
+# User Story 2.2: pictures arrive already shrunk to 256x256 by the app, so a
+# real one is far smaller than this limit.
+PICTURE_PREFIX = "data:image/jpeg;base64,"
+MAX_PICTURE_BYTES = 200 * 1024
+JPEG_START = b"\xff\xd8\xff"  # the first bytes of every JPEG file
+
+
+def picture_error(picture):
+    # Never trust what the app sends: check that it really is a JPEG and small
+    # enough, instead of trusting the label on it.
+    not_a_jpeg = "The picture must be a JPEG image."
+    if not isinstance(picture, str) or not picture.startswith(PICTURE_PREFIX):
+        return not_a_jpeg
+    try:
+        data = base64.b64decode(picture.removeprefix(PICTURE_PREFIX), validate=True)
+    except (binascii.Error, ValueError):
+        return not_a_jpeg
+    if not data.startswith(JPEG_START):
+        return not_a_jpeg
+    if len(data) > MAX_PICTURE_BYTES:
+        return "The picture is too large."
+    return None
+
+
+@require_POST
+def update_picture(request):
+    """User Story 2.2 - Manage Profile Picture"""
+    # The token decides whose picture changes, so users can only change their own.
+    account = signed_in_account(request)
+    if not account:
+        return JsonResponse(SIGN_IN_AGAIN, status=401)
+
+    data = read_json(request)
+    if data is None:
+        return JsonResponse({"errors": {"form": "The request must be valid JSON."}}, status=400)
+
+    picture = data.get("picture")
+    error = picture_error(picture)
+    if error:
+        return JsonResponse({"errors": {"form": error}}, status=400)
+
+    # AC: the new image becomes the profile picture.
+    account.profile_picture = picture
+    account.save(update_fields=["profile_picture"])
     return JsonResponse({"account": public_account(account)})

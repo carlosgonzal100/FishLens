@@ -1,6 +1,7 @@
 # Backend tests for the acceptance criteria in spec.md that the accounts API handles.
 # Each test sends a request to the real endpoint and checks the response and the database.
 # Django creates a temporary test database and deletes it afterward.
+import base64
 import json
 
 from django.test import TestCase
@@ -11,6 +12,7 @@ REGISTER_URL = "/api/accounts/register/"
 SIGN_IN_URL = "/api/accounts/sign-in/"
 ME_URL = "/api/accounts/me/"
 NAME_URL = "/api/accounts/me/name/"
+PICTURE_URL = "/api/accounts/me/picture/"
 
 VALID_ACCOUNT = {
     "firstName": "Alex",
@@ -213,4 +215,70 @@ class EditProfileTests(AccountsTestCase):
         other = Account.objects.get(username="otherangler")
         self.assertEqual(other.first_name, "Jordan")
         self.assertEqual(other.last_name, "Rivera")
+
+
+# A tiny file that starts like a real JPEG, written as the app sends it.
+JPEG = "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8\xff\xe0" + b"0" * 100).decode()
+
+
+class ProfilePictureTests(AccountsTestCase):
+    """User Story 2.2 - Manage Profile Picture"""
+
+    def sign_in(self, username="fishfan2024", password="Fish!2024"):
+        return self.post(SIGN_IN_URL, {"username": username, "password": password}).json()["token"]
+
+    def update_picture(self, token, picture):
+        return self.client.post(
+            PICTURE_URL,
+            data=json.dumps({"picture": picture}),
+            content_type="application/json",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+    def test_ac3_a_new_picture_is_saved_and_shown_on_the_profile(self):
+        self.register()
+        token = self.sign_in()
+
+        response = self.update_picture(token, JPEG)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Account.objects.get().profile_picture, JPEG)
+        me = self.client.get(ME_URL, headers={"Authorization": f"Bearer {token}"}).json()
+        self.assertEqual(me["account"]["profilePicture"], JPEG)
+
+    def test_a_new_account_has_no_picture(self):
+        self.register()
+        me = self.client.get(ME_URL, headers={"Authorization": f"Bearer {self.sign_in()}"}).json()
+        self.assertIsNone(me["account"]["profilePicture"])
+
+    def test_anything_that_is_not_a_small_jpeg_is_rejected(self):
+        self.register()
+        token = self.sign_in()
+        too_large = "data:image/jpeg;base64," + base64.b64encode(b"\xff\xd8\xff" + b"0" * 300_000).decode()
+        fake_jpeg = "data:image/jpeg;base64," + base64.b64encode(b"<svg onload=alert(1)>").decode()
+        for picture in [
+            None,
+            "",
+            "data:image/svg+xml;base64,PHN2Zz4=",
+            "data:image/jpeg;base64,not-base64!",
+            fake_jpeg,
+            too_large,
+        ]:
+            with self.subTest(picture=str(picture)[:40]):
+                self.assertEqual(self.update_picture(token, picture).status_code, 400)
+        self.assertEqual(Account.objects.get().profile_picture, "")
+
+    def test_a_picture_can_only_be_changed_by_someone_signed_in(self):
+        self.register()
+        token = self.sign_in()
+        for bad_token in ["", "fishfan2024", f"{token}x"]:
+            with self.subTest(token=bad_token):
+                self.assertEqual(self.update_picture(bad_token, JPEG).status_code, 401)
+        self.assertEqual(Account.objects.get().profile_picture, "")
+
+    def test_a_user_can_only_change_their_own_picture(self):
+        self.register()
+        self.register(email="other@example.com", username="otherangler")
+        self.update_picture(self.sign_in(), JPEG)
+        self.assertEqual(Account.objects.get(username="otherangler").profile_picture, "")
 

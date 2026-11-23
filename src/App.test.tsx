@@ -10,12 +10,21 @@
 // test fails only because of a wording change, update UI. The exception is
 // "Incorrect username or password", which spec.md requires word for word.
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { endSession, isSignedIn, saveSessionToken, startSession } from "./auth/session";
 import { validateName } from "./auth/validation";
+import { MAX_UPLOAD_BYTES, checkImageFile } from "./profile/profilePicture";
+
+// jsdom can't draw images, so shrinking a picture is faked. Everything else about
+// uploading a picture is real.
+vi.mock("./profile/profilePicture", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./profile/profilePicture")>()),
+  resizeImage: async () => "data:image/jpeg;base64,/9j/4AAQSkZJRg==",
+}));
+const RESIZED_PICTURE = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
 
 // Typing into many fields takes longer than the default 5 second limit.
 vi.setConfig({ testTimeout: 30000 });
@@ -57,6 +66,10 @@ const UI = {
   editName: /edit name/i,
   save: /^save$/i,
   nameUpdated: /updated/i,
+  pictureUpdated: /picture updated/i,
+  chooseFile: /choose a profile picture/i,
+  cameraFile: /take a profile picture/i,
+  pictureRule: /jpeg, png, or webp/i,
 };
 
 // Requirement messages are paragraphs. Looking only at paragraphs stops a test from
@@ -86,6 +99,15 @@ async function fakeBackend(url: string, options: RequestInit) {
     const { firstName, lastName } = JSON.parse(String(options.body));
     account.firstName = firstName;
     account.lastName = lastName;
+    return reply(200, { account });
+  }
+
+  // User Story 2.2: the token decides whose picture changes.
+  if (url.endsWith("/me/picture/")) {
+    const header = (options.headers as Record<string, string>).Authorization;
+    const account = serverAccounts.find((saved) => header === `Bearer fake-token-${saved.username}`);
+    if (!account) return reply(401, { errors: { form: "Please sign in again." } });
+    Object.assign(account, { profilePicture: JSON.parse(String(options.body)).picture });
     return reply(200, { account });
   }
 
@@ -586,6 +608,86 @@ describe("INTEGRATION TESTS: User Story 2.3 - Edit Profile Information", () => {
 
     expect(screen.getByRole("heading", { name: /alex rivera/i })).toBeInTheDocument();
     expect(serverAccounts[0]).toMatchObject({ firstName: "Alex", lastName: "Rivera" });
+  });
+});
+
+// Picks a file in one of the profile's hidden file inputs, like a user would.
+function pickFile(label: RegExp, file: File) {
+  fireEvent.change(screen.getByLabelText(label), { target: { files: [file] } });
+}
+
+function profilePictureSrc() {
+  return document.querySelector(".profile-avatar img")?.getAttribute("src") ?? null;
+}
+
+const PHOTO = new File(["photo"], "photo.jpg", { type: "image/jpeg" });
+
+describe("UNIT TESTS: profile picture files (User Story 2.2)", () => {
+  //Supports User Story 2.2 AC1: common photo formats from the device are accepted
+  it("accepts JPEG, PNG, and WebP images", () => {
+    for (const type of ["image/jpeg", "image/png", "image/webp"]) {
+      expect(checkImageFile({ type, size: 1000 })).toBeNull();
+    }
+  });
+
+  //SVG can contain scripts, and huge files waste storage, so both are rejected
+  it("rejects SVG, non-images, and files over 10 MB", () => {
+    expect(checkImageFile({ type: "image/svg+xml", size: 1000 })).not.toBeNull();
+    expect(checkImageFile({ type: "application/pdf", size: 1000 })).not.toBeNull();
+    expect(checkImageFile({ type: "image/jpeg", size: MAX_UPLOAD_BYTES + 1 })).not.toBeNull();
+  });
+});
+
+describe("INTEGRATION TESTS: User Story 2.2 - Manage Profile Picture", () => {
+  //Signs in, opens the profile, and picks an image from the device. Expects it to be
+  //saved to the (fake) database.
+  //Supports User Story 2.2 AC1
+  it("AC1: the user can choose an image stored on their device", async () => {
+    await signInThroughApp();
+    await openProfile();
+
+    pickFile(UI.chooseFile, PHOTO);
+
+    await screen.findByText(UI.pictureUpdated, MESSAGE);
+    expect(serverAccounts[0]).toMatchObject({ profilePicture: RESIZED_PICTURE });
+  });
+
+  //Expects the "Take photo" input to open the device camera, then takes a picture with it.
+  //Supports User Story 2.2 AC2
+  it("AC2: the user can take a new picture with the device camera", async () => {
+    await signInThroughApp();
+    await openProfile();
+
+    const camera = screen.getByLabelText(UI.cameraFile);
+    expect(camera).toHaveAttribute("capture", "user");
+    pickFile(UI.cameraFile, PHOTO);
+
+    await screen.findByText(UI.pictureUpdated, MESSAGE);
+    expect(serverAccounts[0]).toMatchObject({ profilePicture: RESIZED_PICTURE });
+  });
+
+  //Expects initials before a picture is set, and the new picture in their place after.
+  //Supports User Story 2.2 AC3
+  it("AC3: the new image is displayed as the profile picture", async () => {
+    await signInThroughApp();
+    await openProfile();
+    expect(profilePictureSrc()).toBeNull();
+
+    pickFile(UI.chooseFile, PHOTO);
+
+    await waitFor(() => expect(profilePictureSrc()).toBe(RESIZED_PICTURE));
+  });
+
+  //Picks an SVG file. Expects the file rule to be shown and nothing to be saved.
+  it("an unsupported file is rejected and nothing is saved", async () => {
+    await signInThroughApp();
+    await openProfile();
+
+    pickFile(UI.chooseFile, new File(["<svg></svg>"], "drawing.svg", { type: "image/svg+xml" }));
+
+    expect(await screen.findByText(UI.pictureRule, MESSAGE)).toBeInTheDocument();
+    expect(serverAccounts[0]).not.toHaveProperty("profilePicture");
+    expect(profilePictureSrc()).toBeNull();
   });
 });
 
