@@ -57,6 +57,10 @@ const UI = {
   editName: /edit name/i,
   save: /^save$/i,
   nameUpdated: /updated/i,
+  openChat: /ai assistant/i,
+  backToDashboard: /dashboard/i,
+  question: /your question/i,
+  send: /send/i,
 };
 
 // Requirement messages are paragraphs. Looking only at paragraphs stops a test from
@@ -68,9 +72,24 @@ let user: UserEvent;
 // The accounts the fake backend has saved, like the accounts collection in the database.
 let serverAccounts: RegistrationValues[] = [];
 
+// The questions the fake AI assistant received, and its answer to each one.
+// Claude itself is never called: backend/chat/tests.py and the eval suite test that part.
+let chatQuestions: string[] = [];
+let chatAnswer = (question: string) => `Fake answer to: ${question}`;
+
 // Stands in for the Django backend, so these tests run without a server or a database.
 async function fakeBackend(url: string, options: RequestInit) {
   const reply = (status: number, body: unknown) => ({ status, json: async () => body });
+
+  // User Story 6.2: only signed-in users can ask the assistant.
+  if (url.endsWith("/api/chat/ask/")) {
+    const header = (options.headers as Record<string, string>).Authorization;
+    const account = serverAccounts.find((saved) => header === `Bearer fake-token-${saved.username}`);
+    if (!account) return reply(401, { errors: { form: "Please sign in again." } });
+    const { question } = JSON.parse(String(options.body));
+    chatQuestions.push(question);
+    return reply(200, { answer: chatAnswer(question), source: "llm:v2" });
+  }
 
   if (url.endsWith("/me/")) {
     const header = (options.headers as Record<string, string>).Authorization;
@@ -118,6 +137,8 @@ async function fakeBackend(url: string, options: RequestInit) {
 beforeEach(() => {
   localStorage.clear(); // each test starts with no one signed in
   serverAccounts = []; // and no accounts
+  chatQuestions = [];
+  chatAnswer = (question) => `Fake answer to: ${question}`;
   vi.stubGlobal("fetch", fakeBackend);
   user = userEvent.setup();
 });
@@ -589,3 +610,92 @@ describe("INTEGRATION TESTS: User Story 2.3 - Edit Profile Information", () => {
   });
 });
 
+
+// Opens the chat from the dashboard's chat button.
+async function openChat() {
+  await user.click(screen.getByRole("button", { name: UI.openChat }));
+  await screen.findByLabelText(UI.question);
+}
+
+// Types a question in the chat and sends it.
+async function ask(question: string) {
+  await user.type(screen.getByLabelText(UI.question), question);
+  await user.click(screen.getByRole("button", { name: UI.send }));
+}
+
+describe("INTEGRATION TESTS: User Story 6.2 - Ask the AI Assistant About Fish", () => {
+  //Signs in, opens the chat from the dashboard, and asks about a species. Expects the
+  //question to reach the backend and the assistant's answer to be shown.
+  //Supports User Story 6.2 AC1
+  it("AC1: a question about a fish species gets a response", async () => {
+    await signInThroughApp();
+    await openChat();
+    chatAnswer = () => "Striped bass have dark stripes along their silver sides.";
+
+    await ask("What does a striped bass look like?");
+
+    expect(await screen.findByText(/dark stripes along their silver sides/i)).toBeInTheDocument();
+    expect(screen.getByText("What does a striped bass look like?")).toBeInTheDocument();
+    expect(chatQuestions).toEqual(["What does a striped bass look like?"]);
+  });
+
+  //Asks where a fish can be caught. Expects the location answer to be shown.
+  //Supports User Story 6.2 AC2
+  it("AC2: a where-to-catch question gets location information", async () => {
+    await signInThroughApp();
+    await openChat();
+    chatAnswer = () => "Fluke are caught in the South Shore bays and inlets.";
+
+    await ask("Where can I catch fluke on Long Island?");
+
+    expect(await screen.findByText(/south shore bays and inlets/i)).toBeInTheDocument();
+    expect(chatQuestions).toEqual(["Where can I catch fluke on Long Island?"]);
+  });
+
+  //Asks what bait to use. Expects the bait answer to be shown.
+  //Supports User Story 6.2 AC3
+  it("AC3: a bait question gets bait information", async () => {
+    await signInThroughApp();
+    await openChat();
+    chatAnswer = () => "Porgy bite well on clams and squid.";
+
+    await ask("What bait should I use for porgy?");
+
+    expect(await screen.findByText(/clams and squid/i)).toBeInTheDocument();
+    expect(chatQuestions).toEqual(["What bait should I use for porgy?"]);
+  });
+
+  //Opens the chat and goes back. Expects the dashboard to show again.
+  it("the back button returns to the dashboard", async () => {
+    await signInThroughApp();
+    await openChat();
+
+    await user.click(screen.getByRole("button", { name: UI.backToDashboard }));
+
+    await waitForDashboard();
+  });
+
+  //An empty question can't be sent.
+  it("the send button stays disabled until a question is typed", async () => {
+    await signInThroughApp();
+    await openChat();
+
+    expect(screen.getByRole("button", { name: UI.send })).toBeDisabled();
+    await user.type(screen.getByLabelText(UI.question), "   ");
+    expect(screen.getByRole("button", { name: UI.send })).toBeDisabled();
+    expect(chatQuestions).toEqual([]);
+  });
+
+  //The backend can't be reached. Expects an error message in the chat instead of a crash.
+  it("shows an error message when the assistant can't be reached", async () => {
+    await signInThroughApp();
+    await openChat();
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("network down");
+    });
+
+    await ask("Where do fluke live?");
+
+    expect(await screen.findByText(/can't reach the assistant/i)).toBeInTheDocument();
+  });
+});

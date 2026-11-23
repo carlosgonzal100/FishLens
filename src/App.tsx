@@ -11,6 +11,7 @@ import ProfileScreen from "./screens/ProfileScreen";
 import AuthenticationSettings from "./AuthenticationSettings";
 import SensitiveAccountScreen from "./screens/SensitiveAccountScreen";
 import DeleteAccountScreen from "./screens/DeleteAccountScreen";
+import ChatScreen from "./screens/ChatScreen";
 
 type Screen =
   | "splash"
@@ -21,7 +22,8 @@ type Screen =
   | "profile"
   | "authentication-settings"
   | "sensitive-account"
-  | "delete-account";
+  | "delete-account"
+  | "chat";
 
 // Screens that only signed-in users may see.
 const PROTECTED_SCREENS: Screen[] = [
@@ -30,6 +32,7 @@ const PROTECTED_SCREENS: Screen[] = [
   "authentication-settings",
   "sensitive-account",
   "delete-account",
+  "chat",
 ];
 
 export default function App() {
@@ -91,8 +94,13 @@ export default function App() {
             endSession();
             setScreen("sign-in");
           }}
+          onOpenChat={() => setScreen("chat")}
         />
       );
+
+    case "chat":
+      // User Story 6.2: the AI assistant
+      return <ChatScreen onBack={() => setScreen("dashboard")} />;
 
     case "profile":
       return (
