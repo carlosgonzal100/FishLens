@@ -205,7 +205,7 @@ teammate approves and that passes the pipeline.
 | 1.2, 1.3: accounts stored in MongoDB through the Django backend (backend tests) | #52 |
 | 1.6: manage sensitive account information (frontend) | #51 |
 | 2.1: view profile | #50 |
-| 6.2: AI assistant (chat screen, Claude backend, fallback, eval suite, Eval stage) | #44 |
+| 6.2: AI assistant (chat screen, Claude backend, fallback, eval suite, Eval stage) | #57 |
 
 ## Secrets
 
