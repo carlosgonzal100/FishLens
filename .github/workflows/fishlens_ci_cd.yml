@@ -96,6 +96,59 @@ jobs:
         if: failure()
         run: docker logs "${{ job.services.mongodb.id }}"
 
+  # User Story 6.2: runs the golden set against the real Claude and fails the
+  # check if the AI's answers fall below the thresholds or drift from
+  # backend/evals/baseline.json. Each run costs money, so it only runs on pull
+  # requests that change something that can affect the AI's answers. Other
+  # pull requests pass this check without calling the API.
+  eval:
+    name: Eval
+    needs: test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # full history, so the next step can see what the PR changed
+
+      - name: Check whether this PR changes the AI feature
+        id: ai
+        run: |
+          files=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" HEAD)
+          if echo "$files" | grep -qE '^(backend/(prompts|chat|evals)/|backend/requirements\.txt$|\.github/workflows/)'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No AI-related files changed, so the eval is skipped (no API cost)."
+          fi
+
+      - name: Install Python
+        if: steps.ai.outputs.changed == 'true'
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      - name: Install backend dependencies
+        if: steps.ai.outputs.changed == 'true'
+        run: pip install -r backend/requirements.txt
+
+      - name: Run the eval suite
+        if: steps.ai.outputs.changed == 'true'
+        working-directory: backend
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_MODEL: claude-sonnet-5-5
+          FISH_CHAT_PROMPT_VERSION: v2
+        run: python evals/run_evals.py
+
+      - name: Upload eval results
+        if: always() && steps.ai.outputs.changed == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-results
+          path: backend/evals/results.json
+
   deploy:
     name: Deploy
     needs: test

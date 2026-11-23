@@ -29,6 +29,7 @@ CORS_ALLOWED_ORIGINS = list_setting("CORS_ALLOWED_ORIGINS")
 INSTALLED_APPS = [
     "corsheaders",
     "accounts.apps.AccountsConfig",
+    "chat.apps.ChatConfig",
 ]
 
 MIDDLEWARE = [
