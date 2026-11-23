@@ -6,9 +6,11 @@ import FishIllustration from "../components/FishIllustration";
 export default function DashboardScreen({
   onSignOut,
   onViewProfile,
+  onOpenChat,
 }: {
   onSignOut: () => void;
   onViewProfile: () => void;
+  onOpenChat: () => void;
 }) {
   const [now, setNow] = useState(() => new Date());
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -70,6 +72,19 @@ export default function DashboardScreen({
             </strong>
           </time>
         </div>
+        {/* User Story 6.2: opens the AI assistant chat */}
+        <button
+          className="chat-open-button"
+          type="button"
+          aria-label="AI assistant"
+          title="Ask the AI assistant"
+          onClick={onOpenChat}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M5 4.5h14a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-8.5L6 20v-3.5H5A1.5 1.5 0 0 1 3.5 15V6A1.5 1.5 0 0 1 5 4.5Z" />
+            <path d="M8 9h8M8 12h5" />
+          </svg>
+        </button>
       </section>
     </main>
   );

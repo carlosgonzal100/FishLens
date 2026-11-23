@@ -6,7 +6,7 @@ import { getSessionToken } from "./session";
 
 // Uses the live backend unless VITE_API_URL says otherwise, for example
 // VITE_API_URL=http://localhost:8000 to test against Django on your own computer.
-const API_URL = import.meta.env.VITE_API_URL ?? "https://fish-lens-backend.vercel.app";
+export const API_URL = import.meta.env.VITE_API_URL ?? "https://fish-lens-backend.vercel.app";
 const SERVER_ERROR = "We can't reach the server. Please try again.";
 
 export type Account = {

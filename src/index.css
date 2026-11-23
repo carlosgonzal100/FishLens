@@ -508,6 +508,40 @@ input:focus {
   background: #e9e0c8;
 }
 
+/* User Story 6.2: the AI assistant chat button */
+.chat-open-button {
+  position: absolute;
+  z-index: 2;
+  right: 44px;
+  bottom: 42px;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: 1px solid #193e3b;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #f7f1e2;
+  background: #193e3b;
+  box-shadow: 0 10px 24px rgb(25 62 59 / 22%);
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.chat-open-button:hover {
+  background: #28534e;
+  transform: translateY(-1px);
+}
+
+.chat-open-button svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .dashboard-card > .fish-mark {
   position: relative;
   z-index: 1;
@@ -646,6 +680,11 @@ input:focus {
   .profile-menu {
     top: 38px;
     right: 34px;
+  }
+
+  .chat-open-button {
+    right: 28px;
+    bottom: 28px;
   }
 
   .dashboard-card > .fish-mark {
