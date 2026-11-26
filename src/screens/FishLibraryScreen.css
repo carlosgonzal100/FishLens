@@ -99,6 +99,38 @@
   background: #f3e3dc;
 }
 
+/* User Story 5.2: the search box above the grid. */
+.library-search {
+  width: min(520px, 100%);
+  margin: 0 auto 24px;
+}
+
+.library-search label {
+  display: block;
+  margin-bottom: 6px;
+  color: #193e3b;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.library-search input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1px solid #9aaca3;
+  outline: none;
+  color: #193e3b;
+  background: rgb(255 255 255 / 45%);
+  font: inherit;
+  font-size: 15px;
+}
+
+.library-search input:focus {
+  border-color: #b27625;
+  box-shadow: 0 0 0 2px rgb(178 118 37 / 14%);
+}
+
 .library-grid {
   margin: 0;
   padding: 0;
