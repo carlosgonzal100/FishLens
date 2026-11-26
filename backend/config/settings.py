@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "accounts.apps.AccountsConfig",
     "chat.apps.ChatConfig",
+    "fish.apps.FishConfig",
 ]
 
 MIDDLEWARE = [

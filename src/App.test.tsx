@@ -10,7 +10,7 @@
 // test fails only because of a wording change, update UI. The exception is
 // "Incorrect username or password", which spec.md requires word for word.
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
@@ -74,6 +74,9 @@ const UI = {
   chooseFile: /choose a profile picture/i,
   cameraFile: /take a profile picture/i,
   pictureRule: /jpeg, png, or webp/i,
+  openLibrary: /fish library/i,
+  backToLibrary: /fish library/i,
+  fishList: /fish species/i,
 };
 
 // Requirement messages are paragraphs. Looking only at paragraphs stops a test from
@@ -90,9 +93,52 @@ let serverAccounts: RegistrationValues[] = [];
 let chatQuestions: string[] = [];
 let chatAnswer = (question: string) => `Fake answer to: ${question}`;
 
+// The species in the fake fish database (User Story 5.1). One has every detail
+// and a picture; the other has only its name.
+const STRIPED_BASS = {
+  slug: "striped-bass",
+  commonName: "Striped Bass",
+  water: "saltwater",
+  picture: "/fish/striped-bass.jpg",
+  scientificName: "Morone saxatilis",
+  features: "Silver sides with dark stripes.",
+  habitat: "Bays, inlets, and the surf.",
+  bestBait: "Bunker and clams.",
+  morePictures: [],
+};
+const BLUEFISH = {
+  slug: "bluefish",
+  commonName: "Bluefish",
+  water: "saltwater",
+  picture: null,
+  scientificName: "Pomatomus saltatrix",
+  features: "",
+  habitat: "",
+  bestBait: "",
+  morePictures: [],
+};
+const serverFish = [STRIPED_BASS, BLUEFISH];
+
 // Stands in for the Django backend, so these tests run without a server or a database.
 async function fakeBackend(url: string, options: RequestInit) {
   const reply = (status: number, body: unknown) => ({ status, json: async () => body });
+
+  // User Story 5.1: only signed-in users can browse the fish database. Like the
+  // real backend, the list is alphabetical.
+  if (url.includes("/api/fish/")) {
+    const header = (options.headers as Record<string, string>).Authorization;
+    const account = serverAccounts.find((saved) => header === `Bearer fake-token-${saved.username}`);
+    if (!account) return reply(401, { errors: { form: "Please sign in again." } });
+    const slug = url.split("/api/fish/")[1].replace("/", "");
+    if (!slug) {
+      const sorted = [...serverFish].sort((a, b) => a.commonName.localeCompare(b.commonName));
+      return reply(200, {
+        fish: sorted.map(({ slug, commonName, water, picture }) => ({ slug, commonName, water, picture })),
+      });
+    }
+    const fish = serverFish.find((saved) => saved.slug === slug);
+    return fish ? reply(200, { fish }) : reply(404, { errors: { form: "That fish isn't in the database." } });
+  }
 
   // User Story 6.2: only signed-in users can ask the assistant.
   if (url.endsWith("/api/chat/ask/")) {
@@ -798,5 +844,88 @@ describe("INTEGRATION TESTS: User Story 2.2 - Manage Profile Picture", () => {
     expect(await screen.findByText(UI.pictureRule, MESSAGE)).toBeInTheDocument();
     expect(serverAccounts[0]).not.toHaveProperty("profilePicture");
     expect(profilePictureSrc()).toBeNull();
+  });
+});
+
+// Opens the fish library from the dashboard's library button.
+async function openLibrary() {
+  await user.click(screen.getByRole("button", { name: UI.openLibrary }));
+  await screen.findByRole("list", { name: UI.fishList });
+}
+
+describe("INTEGRATION TESTS: User Story 5.1 - Browse Fish Species", () => {
+  //Signs in and opens the fish library from the dashboard. Expects every species in the
+  //(fake) database to be shown, in alphabetical order.
+  //Supports User Story 5.1 AC1
+  it("AC1: the user can see the fish species contained in the database", async () => {
+    await signInThroughApp();
+
+    await openLibrary();
+
+    const names = within(screen.getByRole("list", { name: UI.fishList }))
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(names).toEqual(["Bluefish", "Striped Bass"]);
+  });
+
+  //Opens a species with every detail stored. Expects all of it to be shown, including its
+  //picture, then goes back to the library.
+  //Supports User Story 5.1 AC2
+  it("AC2: selecting a species shows the information stored for it", async () => {
+    await signInThroughApp();
+    await openLibrary();
+
+    await user.click(screen.getByRole("button", { name: "Striped Bass" }));
+
+    expect(await screen.findByRole("heading", { name: "Striped Bass" })).toBeInTheDocument();
+    for (const text of [
+      STRIPED_BASS.scientificName,
+      /saltwater/i,
+      STRIPED_BASS.features,
+      STRIPED_BASS.habitat,
+      STRIPED_BASS.bestBait,
+    ]) {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    }
+    expect(screen.getByRole("img", { name: "Striped Bass" })).toHaveAttribute("src", STRIPED_BASS.picture);
+
+    await user.click(screen.getByRole("button", { name: UI.backToLibrary }));
+    await screen.findByRole("list", { name: UI.fishList });
+  });
+
+  //Opens a species that only has its name stored. Expects no empty sections or picture.
+  //Supports User Story 5.1 AC2 ("the available information")
+  it("a species with only its name stored shows no empty details", async () => {
+    await signInThroughApp();
+    await openLibrary();
+
+    await user.click(screen.getByRole("button", { name: "Bluefish" }));
+
+    expect(await screen.findByRole("heading", { name: "Bluefish" })).toBeInTheDocument();
+    expect(screen.getByText(BLUEFISH.scientificName)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /features|habitat|preferred baits & rigs/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  //Opens the library and goes back. Expects the dashboard to show again.
+  it("the back button returns to the dashboard", async () => {
+    await signInThroughApp();
+    await openLibrary();
+
+    await user.click(screen.getByRole("button", { name: UI.backToDashboard }));
+
+    await waitForDashboard();
+  });
+
+  //The backend can't be reached. Expects an error message instead of a crash.
+  it("shows an error message when the fish database can't be reached", async () => {
+    await signInThroughApp();
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("network down");
+    });
+
+    await user.click(screen.getByRole("button", { name: UI.openLibrary }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/can't reach the fish database/i);
   });
 });

@@ -12,6 +12,7 @@ import AuthenticationSettings from "./AuthenticationSettings";
 import SensitiveAccountScreen from "./screens/SensitiveAccountScreen";
 import DeleteAccountScreen from "./screens/DeleteAccountScreen";
 import ChatScreen from "./screens/ChatScreen";
+import FishLibraryScreen from "./screens/FishLibraryScreen";
 
 type Screen =
   | "splash"
@@ -23,7 +24,8 @@ type Screen =
   | "authentication-settings"
   | "sensitive-account"
   | "delete-account"
-  | "chat";
+  | "chat"
+  | "fish-library";
 
 // Screens that only signed-in users may see.
 const PROTECTED_SCREENS: Screen[] = [
@@ -33,6 +35,7 @@ const PROTECTED_SCREENS: Screen[] = [
   "sensitive-account",
   "delete-account",
   "chat",
+  "fish-library",
 ];
 
 export default function App() {
@@ -95,8 +98,13 @@ export default function App() {
             setScreen("sign-in");
           }}
           onOpenChat={() => setScreen("chat")}
+          onOpenLibrary={() => setScreen("fish-library")}
         />
       );
+
+    case "fish-library":
+      // User Story 5.1: browse the fish database
+      return <FishLibraryScreen onBack={() => setScreen("dashboard")} />;
 
     case "chat":
       // User Story 6.2: the AI assistant

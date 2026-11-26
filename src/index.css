@@ -509,6 +509,7 @@ input:focus {
 }
 
 /* User Story 6.2: the AI assistant chat button */
+.library-open-button,
 .chat-open-button {
   position: absolute;
   z-index: 2;
@@ -527,11 +528,18 @@ input:focus {
   transition: background-color 160ms ease, transform 160ms ease;
 }
 
+/* User Story 5.1: the fish library button sits next to the chat button. */
+.library-open-button {
+  right: 114px;
+}
+
+.library-open-button:hover,
 .chat-open-button:hover {
   background: #28534e;
   transform: translateY(-1px);
 }
 
+.library-open-button svg,
 .chat-open-button svg {
   width: 26px;
   height: 26px;
@@ -684,6 +692,11 @@ input:focus {
 
   .chat-open-button {
     right: 28px;
+    bottom: 28px;
+  }
+
+  .library-open-button {
+    right: 94px;
     bottom: 28px;
   }
 
