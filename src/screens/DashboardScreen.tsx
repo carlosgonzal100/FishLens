@@ -7,10 +7,12 @@ export default function DashboardScreen({
   onSignOut,
   onViewProfile,
   onOpenChat,
+  onOpenLibrary,
 }: {
   onSignOut: () => void;
   onViewProfile: () => void;
   onOpenChat: () => void;
+  onOpenLibrary: () => void;
 }) {
   const [now, setNow] = useState(() => new Date());
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -72,6 +74,20 @@ export default function DashboardScreen({
             </strong>
           </time>
         </div>
+        {/* User Story 5.1: opens the fish library */}
+        <button
+          className="library-open-button"
+          type="button"
+          aria-label="Fish library"
+          title="Browse the fish library"
+          onClick={onOpenLibrary}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5Z" />
+            <path d="M13 4h5.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H13Z" />
+            <path d="M6.5 8h2M6.5 11h2M15.5 8h2M15.5 11h2" />
+          </svg>
+        </button>
         {/* User Story 6.2: opens the AI assistant chat */}
         <button
           className="chat-open-button"
