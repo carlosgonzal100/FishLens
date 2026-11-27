@@ -26,6 +26,13 @@ vi.mock("./profile/profilePicture", async (importOriginal) => ({
 }));
 const RESIZED_PICTURE = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
 
+// The same for the fish photo in User Story 6.1.
+vi.mock("./fish/identifyFish", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./fish/identifyFish")>()),
+  shrinkPhoto: async () => "data:image/jpeg;base64,/9j/4AAQSkZJRgAB",
+}));
+const SHRUNK_FISH_PHOTO = "data:image/jpeg;base64,/9j/4AAQSkZJRgAB";
+
 // Typing into many fields takes longer than the default 5 second limit.
 vi.setConfig({ testTimeout: 30000 });
 
@@ -79,6 +86,14 @@ const UI = {
   fishList: /fish species/i,
   searchFish: /search fish/i,
   noMatch: /no fish match/i,
+  openIdentify: /identify a fish/i,
+  takeFishPhoto: /take a photo of a fish/i,
+  chooseFishPhoto: /choose a photo of a fish/i,
+  identify: /^identify fish$/i,
+  seeInLibrary: /see .* fish library/i,
+  notInLibrary: /isn't in the fish library/i,
+  couldNotIdentify: /couldn't identify/i,
+  identifyUnavailable: /isn't available/i,
 };
 
 // Requirement messages are paragraphs. Looking only at paragraphs stops a test from
@@ -121,9 +136,24 @@ const BLUEFISH = {
 };
 const serverFish = [STRIPED_BASS, BLUEFISH];
 
+// The photos the fake identification received (User Story 6.1), and its reply, in the
+// same shape as the real backend's. Fishial itself is never called: backend/fish/tests.py
+// tests that part.
+let identifyPhotos: string[] = [];
+let identifyReply: unknown;
+
 // Stands in for the Django backend, so these tests run without a server or a database.
 async function fakeBackend(url: string, options: RequestInit) {
   const reply = (status: number, body: unknown) => ({ status, json: async () => body });
+
+  // User Story 6.1: only signed-in users can identify a fish.
+  if (url.endsWith("/api/fish/identify/")) {
+    const header = (options.headers as Record<string, string>).Authorization;
+    const account = serverAccounts.find((saved) => header === `Bearer fake-token-${saved.username}`);
+    if (!account) return reply(401, { errors: { form: "Please sign in again." } });
+    identifyPhotos.push(JSON.parse(String(options.body)).photo);
+    return reply(200, identifyReply);
+  }
 
   // User Story 5.1: only signed-in users can browse the fish database. Like the
   // real backend, the list is alphabetical.
@@ -209,6 +239,14 @@ beforeEach(() => {
   serverAccounts = []; // and no accounts
   chatQuestions = [];
   chatAnswer = (question) => `Fake answer to: ${question}`;
+  identifyPhotos = [];
+  identifyReply = {
+    identified: true,
+    scientificName: "Morone saxatilis",
+    accuracy: 0.94,
+    fish: { slug: "striped-bass", commonName: "Striped Bass" },
+    source: "fishial",
+  };
   vi.stubGlobal("fetch", fakeBackend);
   user = userEvent.setup();
 });
@@ -984,5 +1022,119 @@ describe("INTEGRATION TESTS: User Story 5.2 - Search for Fish Species", () => {
 
     expect(shownFish()).toEqual([]);
     expect(screen.getByText(UI.noMatch)).toBeInTheDocument();
+  });
+});
+
+// Opens Identify a Fish from the dashboard, picks one photo, and submits it.
+async function identifyPhoto(label: RegExp = UI.takeFishPhoto) {
+  await user.click(screen.getByRole("button", { name: UI.openIdentify }));
+  pickFile(label, PHOTO);
+  await user.click(await screen.findByRole("button", { name: UI.identify }));
+}
+
+describe("INTEGRATION TESTS: User Story 6.1 - Identify a Fish Using a Photo", () => {
+  //Opens Identify a Fish. Expects "Take photo" to open the device's back camera, and the
+  //picture taken to be shown, ready to submit.
+  //Supports User Story 6.1 AC1
+  it("AC1: the user can take a picture of the fish with the device camera", async () => {
+    await signInThroughApp();
+
+    await user.click(screen.getByRole("button", { name: UI.openIdentify }));
+    const camera = screen.getByLabelText(UI.takeFishPhoto);
+    expect(camera).toHaveAttribute("capture", "environment");
+    pickFile(UI.takeFishPhoto, PHOTO);
+
+    expect(await screen.findByRole("img", { name: /photo to identify/i })).toHaveAttribute("src", SHRUNK_FISH_PHOTO);
+    expect(screen.getByRole("button", { name: UI.identify })).toBeEnabled();
+  });
+
+  //Takes a photo and submits it. Expects exactly that one (shrunk) photo to be sent for
+  //identification. A photo chosen from the device works the same way.
+  //Supports User Story 6.1 AC2
+  it("AC2: a submitted picture is sent for identification", async () => {
+    await signInThroughApp();
+
+    await identifyPhoto();
+    await screen.findByRole("status");
+    expect(identifyPhotos).toEqual([SHRUNK_FISH_PHOTO]);
+
+    await user.click(screen.getByRole("button", { name: UI.backToDashboard }));
+    await identifyPhoto(UI.chooseFishPhoto);
+    await waitFor(() => expect(identifyPhotos).toEqual([SHRUNK_FISH_PHOTO, SHRUNK_FISH_PHOTO]));
+  });
+
+  //The (fake) AI identifies a striped bass. Expects its name to be shown, and its button to
+  //open the striped bass page in the fish library.
+  //Supports User Story 6.1 AC3
+  it("AC3: an identified fish shows its species, linked to the fish library", async () => {
+    await signInThroughApp();
+
+    await identifyPhoto();
+
+    const result = await screen.findByRole("status");
+    expect(within(result).getByRole("heading", { name: "Striped Bass" })).toBeInTheDocument();
+    expect(within(result).getByText("Morone saxatilis")).toBeInTheDocument();
+
+    await user.click(within(result).getByRole("button", { name: UI.seeInLibrary }));
+    expect(await screen.findByRole("heading", { name: "Striped Bass" })).toBeInTheDocument();
+    expect(await screen.findByText(STRIPED_BASS.features)).toBeInTheDocument();
+  });
+
+  //The (fake) AI identifies a species that isn't in the fish database. Expects its
+  //scientific name to be shown, with no link.
+  //Supports User Story 6.1 AC3
+  it("a species not in the fish library is shown without a link", async () => {
+    await signInThroughApp();
+    identifyReply = { identified: true, scientificName: "Esox lucius", accuracy: 0.97, fish: null, source: "fishial" };
+
+    await identifyPhoto();
+
+    const result = await screen.findByRole("status");
+    expect(within(result).getByRole("heading", { name: "Esox lucius" })).toBeInTheDocument();
+    expect(within(result).getByText(UI.notInLibrary)).toBeInTheDocument();
+    expect(within(result).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  //The (fake) AI can't identify the fish. Expects the user to be told so.
+  //Supports User Story 6.1 AC4
+  it("AC4: a fish that can't be identified is reported as not identified", async () => {
+    await signInThroughApp();
+    identifyReply = { identified: false, source: "fishial" };
+
+    await identifyPhoto();
+
+    expect(await screen.findByRole("status")).toHaveTextContent(UI.couldNotIdentify);
+  });
+
+  //Fishial is down or out of credits. Expects a message instead of a wrong answer.
+  it("says so when identification isn't available", async () => {
+    await signInThroughApp();
+    identifyReply = { identified: false, unavailable: true, source: "fallback" };
+
+    await identifyPhoto();
+
+    expect(await screen.findByRole("status")).toHaveTextContent(UI.identifyUnavailable);
+  });
+
+  //Picks an SVG file. Expects the file rule to be shown and nothing to be sent.
+  it("an unsupported file is rejected and nothing is sent", async () => {
+    await signInThroughApp();
+    await user.click(screen.getByRole("button", { name: UI.openIdentify }));
+
+    pickFile(UI.chooseFishPhoto, new File(["<svg></svg>"], "drawing.svg", { type: "image/svg+xml" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(UI.pictureRule);
+    expect(screen.queryByRole("button", { name: UI.identify })).not.toBeInTheDocument();
+    expect(identifyPhotos).toEqual([]);
+  });
+
+  //Opens Identify a Fish and goes back. Expects the dashboard to show again.
+  it("the back button returns to the dashboard", async () => {
+    await signInThroughApp();
+    await user.click(screen.getByRole("button", { name: UI.openIdentify }));
+
+    await user.click(screen.getByRole("button", { name: UI.backToDashboard }));
+
+    await waitForDashboard();
   });
 });

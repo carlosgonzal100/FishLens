@@ -13,6 +13,7 @@ import SensitiveAccountScreen from "./screens/SensitiveAccountScreen";
 import DeleteAccountScreen from "./screens/DeleteAccountScreen";
 import ChatScreen from "./screens/ChatScreen";
 import FishLibraryScreen from "./screens/FishLibraryScreen";
+import IdentifyFishScreen from "./screens/IdentifyFishScreen";
 
 type Screen =
   | "splash"
@@ -25,7 +26,8 @@ type Screen =
   | "sensitive-account"
   | "delete-account"
   | "chat"
-  | "fish-library";
+  | "fish-library"
+  | "identify-fish";
 
 // Screens that only signed-in users may see.
 const PROTECTED_SCREENS: Screen[] = [
@@ -36,10 +38,13 @@ const PROTECTED_SCREENS: Screen[] = [
   "delete-account",
   "chat",
   "fish-library",
+  "identify-fish",
 ];
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("splash");
+  // User Story 6.1: the identified fish the library opens to, if any.
+  const [libraryFish, setLibraryFish] = useState<string | undefined>();
 
   // When the app opens: show the splash, then go to the dashboard if already
   // signed in (US 1.1), otherwise to the starter screen. A saved token the
@@ -98,13 +103,29 @@ export default function App() {
             setScreen("sign-in");
           }}
           onOpenChat={() => setScreen("chat")}
-          onOpenLibrary={() => setScreen("fish-library")}
+          onOpenLibrary={() => {
+            setLibraryFish(undefined);
+            setScreen("fish-library");
+          }}
+          onIdentifyFish={() => setScreen("identify-fish")}
         />
       );
 
     case "fish-library":
       // User Story 5.1: browse the fish database
-      return <FishLibraryScreen onBack={() => setScreen("dashboard")} />;
+      return <FishLibraryScreen key={libraryFish} openSlug={libraryFish} onBack={() => setScreen("dashboard")} />;
+
+    case "identify-fish":
+      // User Story 6.1: identify a fish from a photo
+      return (
+        <IdentifyFishScreen
+          onBack={() => setScreen("dashboard")}
+          onOpenFish={(slug) => {
+            setLibraryFish(slug);
+            setScreen("fish-library");
+          }}
+        />
+      );
 
     case "chat":
       // User Story 6.2: the AI assistant

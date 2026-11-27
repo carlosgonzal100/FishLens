@@ -6,7 +6,8 @@ import "./FishLibraryScreen.css";
 // User Story 5.1 - Browse Fish Species. Only signed-in users can see it.
 // Shows every species in the database as a grid of cards. Clicking one opens
 // the information stored for it. User Story 5.2 adds a search box above the grid.
-export default function FishLibraryScreen({ onBack }: { onBack: () => void }) {
+// User Story 6.1 opens it straight to an identified fish with openSlug.
+export default function FishLibraryScreen({ onBack, openSlug }: { onBack: () => void; openSlug?: string }) {
   const [fishList, setFishList] = useState<FishCard[] | null>(null);
   const [listError, setListError] = useState("");
   const [selected, setSelected] = useState<FishDetails | null>(null);
@@ -26,6 +27,7 @@ export default function FishLibraryScreen({ onBack }: { onBack: () => void }) {
       if ("data" in result) setFishList(result.data);
       else setListError(result.error);
     });
+    if (openSlug) void openFish(openSlug);
     return () => {
       active = false;
     };
