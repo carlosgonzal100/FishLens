@@ -509,6 +509,7 @@ input:focus {
 }
 
 /* User Story 6.2: the AI assistant chat button */
+.identify-open-button,
 .library-open-button,
 .chat-open-button {
   position: absolute;
@@ -533,12 +534,18 @@ input:focus {
   right: 114px;
 }
 
+.identify-open-button {
+  right: 184px;
+}
+
+.identify-open-button:hover,
 .library-open-button:hover,
 .chat-open-button:hover {
   background: #28534e;
   transform: translateY(-1px);
 }
 
+.identify-open-button svg,
 .library-open-button svg,
 .chat-open-button svg {
   width: 26px;
@@ -697,6 +704,11 @@ input:focus {
 
   .library-open-button {
     right: 94px;
+    bottom: 28px;
+  }
+
+  .identify-open-button {
+    right: 160px;
     bottom: 28px;
   }
 

@@ -1,0 +1,76 @@
+/* User Story 6.1 fish identification. The page layout comes from FishLibraryScreen.css. */
+
+.identify-actions {
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.identify-button {
+  padding: 11px 20px;
+  border: 1px solid #193e3b;
+  color: #f7f1e2;
+  background: #193e3b;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.identify-button:hover:not(:disabled) {
+  background: #28534e;
+}
+
+.identify-button:disabled {
+  opacity: 0.6;
+}
+
+.identify-photo {
+  width: min(520px, 100%);
+  margin: 0 auto 24px;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.identify-photo img {
+  max-width: 100%;
+  max-height: 360px;
+  border: 1px solid rgb(25 62 59 / 22%);
+}
+
+.identify-result {
+  width: min(520px, 100%);
+  margin: 0 auto;
+  padding: 20px 24px;
+  border: 1px solid rgb(25 62 59 / 22%);
+  color: #193e3b;
+  background: rgb(255 255 255 / 45%);
+  text-align: center;
+}
+
+.identify-result h2 {
+  margin: 4px 0 0;
+  font-size: clamp(28px, 3.5vw, 38px);
+}
+
+.identify-result .identify-button {
+  margin-top: 18px;
+}
+
+.identify-label {
+  margin: 0;
+  color: #b27625;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.identify-note {
+  margin: 12px 0 0;
+  color: #55706b;
+  font-size: 15px;
+}
