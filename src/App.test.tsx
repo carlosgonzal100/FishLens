@@ -77,6 +77,8 @@ const UI = {
   openLibrary: /fish library/i,
   backToLibrary: /fish library/i,
   fishList: /fish species/i,
+  searchFish: /search fish/i,
+  noMatch: /no fish match/i,
 };
 
 // Requirement messages are paragraphs. Looking only at paragraphs stops a test from
@@ -927,5 +929,60 @@ describe("INTEGRATION TESTS: User Story 5.1 - Browse Fish Species", () => {
     await user.click(screen.getByRole("button", { name: UI.openLibrary }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/can't reach the fish database/i);
+  });
+});
+
+// The names of the fish showing in the library grid.
+function shownFish() {
+  const list = screen.queryByRole("list", { name: UI.fishList });
+  return list ? within(list).getAllByRole("button").map((button) => button.textContent) : [];
+}
+
+async function searchFor(text: string) {
+  const box = screen.getByLabelText(UI.searchFish);
+  await user.clear(box);
+  if (text) await user.type(box, text);
+}
+
+describe("INTEGRATION TESTS: User Story 5.2 - Search for Fish Species", () => {
+  //Searches for a fish in the (fake) database. Expects only the matching species to be
+  //shown, whatever the capital letters. Clearing the search shows every species again.
+  //Supports User Story 5.2 AC1
+  it("AC1: searching for a species in the database shows the matching species", async () => {
+    await signInThroughApp();
+    await openLibrary();
+
+    await searchFor("STRIPED");
+    expect(shownFish()).toEqual(["Striped Bass"]);
+
+    await searchFor("bass");
+    expect(shownFish()).toEqual(["Striped Bass"]);
+
+    await searchFor("");
+    expect(shownFish()).toEqual(["Bluefish", "Striped Bass"]);
+  });
+
+  //Searches, then opens the fish from the results. Expects its information to be shown.
+  //Supports User Story 5.2 AC2
+  it("AC2: selecting a search result shows that species' information", async () => {
+    await signInThroughApp();
+    await openLibrary();
+    await searchFor("striped");
+
+    await user.click(screen.getByRole("button", { name: "Striped Bass" }));
+
+    expect(await screen.findByRole("heading", { name: "Striped Bass" })).toBeInTheDocument();
+    expect(screen.getByText(STRIPED_BASS.features)).toBeInTheDocument();
+  });
+
+  //Searches for a fish that isn't in the database. Expects a message instead of an empty grid.
+  it("a search with no matches says so", async () => {
+    await signInThroughApp();
+    await openLibrary();
+
+    await searchFor("shark");
+
+    expect(shownFish()).toEqual([]);
+    expect(screen.getByText(UI.noMatch)).toBeInTheDocument();
   });
 });

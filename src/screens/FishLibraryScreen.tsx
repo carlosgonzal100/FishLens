@@ -5,12 +5,19 @@ import "./FishLibraryScreen.css";
 
 // User Story 5.1 - Browse Fish Species. Only signed-in users can see it.
 // Shows every species in the database as a grid of cards. Clicking one opens
-// the information stored for it.
+// the information stored for it. User Story 5.2 adds a search box above the grid.
 export default function FishLibraryScreen({ onBack }: { onBack: () => void }) {
   const [fishList, setFishList] = useState<FishCard[] | null>(null);
   const [listError, setListError] = useState("");
   const [selected, setSelected] = useState<FishDetails | null>(null);
   const [detailError, setDetailError] = useState("");
+  const [search, setSearch] = useState("");
+
+  // User Story 5.2: only the fish whose name contains the search text. Capital
+  // letters don't matter, and other names in brackets count too, so "tautog"
+  // finds "Blackfish (Tautog)".
+  const searchText = search.trim().toLowerCase();
+  const matchingFish = fishList?.filter((fish) => fish.commonName.toLowerCase().includes(searchText));
 
   useEffect(() => {
     let active = true;
@@ -64,8 +71,25 @@ export default function FishLibraryScreen({ onBack }: { onBack: () => void }) {
               {fishList?.length === 0 && <p className="library-loading">No fish have been added yet.</p>}
 
               {fishList && fishList.length > 0 && (
+                <div className="library-search">
+                  <label htmlFor="fish-search">Search fish</label>
+                  <input
+                    id="fish-search"
+                    type="search"
+                    placeholder="Search by name, like striped bass or fluke"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </div>
+              )}
+
+              {fishList && fishList.length > 0 && matchingFish?.length === 0 && (
+                <p className="library-loading">No fish match "{search.trim()}".</p>
+              )}
+
+              {matchingFish && matchingFish.length > 0 && (
                 <ul className="library-grid" aria-label="Fish species">
-                  {fishList.map((fish) => (
+                  {matchingFish.map((fish) => (
                     <li key={fish.slug}>
                       <button className="library-fish" type="button" onClick={() => void openFish(fish.slug)}>
                         {fish.picture && <img src={fish.picture} alt="" />}
